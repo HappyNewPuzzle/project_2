@@ -1,12 +1,19 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     app_name: str = "AI Character Chat API"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+
+    database_url: str = (
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/character_chat"
+    )
+    database_echo: bool = False
+    chat_history_limit: int = Field(default=20, ge=1, le=100)
 
     openai_api_key: str | None = None
     openai_model: str = "gpt-5.4-mini"

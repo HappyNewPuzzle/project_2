@@ -1,6 +1,7 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
+from dataclasses import dataclass
 from functools import lru_cache
-from typing import Protocol
+from typing import Literal, Protocol, Sequence
 
 from openai import AsyncOpenAI, OpenAIError
 
@@ -15,12 +16,28 @@ class LLMServiceError(RuntimeError):
     """Raised when the LLM provider request fails."""
 
 
+@dataclass(frozen=True, slots=True)
+class LLMMessage:
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class LLMProvider(Protocol):
-    async def generate(self, message: str) -> str:
+    async def generate(
+        self,
+        messages: Sequence[LLMMessage],
+        *,
+        instructions: str,
+    ) -> str:
         """Generate one assistant response."""
         ...
 
-    def stream(self, message: str) -> AsyncIterator[str]:
+    def stream(
+        self,
+        messages: Sequence[LLMMessage],
+        *,
+        instructions: str,
+    ) -> AsyncGenerator[str, None]:
         """Yield assistant response text as it is generated."""
         ...
 
@@ -39,15 +56,30 @@ class OpenAILLMProvider:
         self._system_prompt = system_prompt
         self._max_output_tokens = max_output_tokens
 
-    async def generate(self, message: str) -> str:
+    def _instructions(self, character_instructions: str) -> str:
+        return f"{self._system_prompt}\n\n{character_instructions}".strip()
+
+    @staticmethod
+    def _input(messages: Sequence[LLMMessage]) -> list[dict[str, str]]:
+        return [
+            {"role": message.role, "content": message.content}
+            for message in messages
+        ]
+
+    async def generate(
+        self,
+        messages: Sequence[LLMMessage],
+        *,
+        instructions: str,
+    ) -> str:
         if self._client is None:
             raise LLMConfigurationError("OPENAI_API_KEY is missing")
 
         try:
             response = await self._client.responses.create(
                 model=self._model,
-                instructions=self._system_prompt,
-                input=message,
+                instructions=self._instructions(instructions),
+                input=self._input(messages),
                 max_output_tokens=self._max_output_tokens,
             )
         except OpenAIError as exc:
@@ -58,7 +90,12 @@ class OpenAILLMProvider:
             raise LLMServiceError("OpenAI API returned an empty response")
         return reply
 
-    async def stream(self, message: str) -> AsyncIterator[str]:
+    async def stream(
+        self,
+        messages: Sequence[LLMMessage],
+        *,
+        instructions: str,
+    ) -> AsyncGenerator[str, None]:
         if self._client is None:
             raise LLMConfigurationError("OPENAI_API_KEY is missing")
 
@@ -67,8 +104,8 @@ class OpenAILLMProvider:
         try:
             upstream = await self._client.responses.create(
                 model=self._model,
-                instructions=self._system_prompt,
-                input=message,
+                instructions=self._instructions(instructions),
+                input=self._input(messages),
                 max_output_tokens=self._max_output_tokens,
                 stream=True,
             )
