@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from app.api.routes.auth import router as auth_router
 from app.api.routes.chat import router as chat_router
 from app.api.routes.characters import router as characters_router
+from app.api.routes.memories import router as memories_router
 from app.core.config import get_settings
 from app.db.session import get_engine
 
@@ -40,7 +41,7 @@ def create_app() -> FastAPI:
     # lifespan을 넘기면 FastAPI가 서버 종료 시 DB 엔진 정리를 호출한다.
     app = FastAPI(
         title=settings.app_name,
-        version="0.4.0",
+        version="0.5.0",
         lifespan=lifespan,
     )
 
@@ -48,6 +49,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(chat_router)
     app.include_router(characters_router)
+    app.include_router(memories_router)
     return app
 
 

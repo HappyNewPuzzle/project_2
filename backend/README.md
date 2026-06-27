@@ -5,8 +5,8 @@
 
 ## 현재 단계
 
-5단계까지 구현되어 있습니다. 회원가입·JWT 로그인을 지원하며, 로그인한 사용자만
-자신의 캐릭터와 대화 기록에 접근할 수 있습니다.
+6단계까지 구현되어 있습니다. 최근 대화 창 밖에서도 유지되는 사용자 장기 기억을
+전역 또는 캐릭터별로 저장하고 채팅 문맥에 포함합니다.
 
 ```text
 backend/
@@ -15,7 +15,8 @@ backend/
 │  ├─ api/routes/
 │  │  ├─ auth.py
 │  │  ├─ chat.py
-│  │  └─ characters.py
+│  │  ├─ characters.py
+│  │  └─ memories.py
 │  ├─ core/
 │  │  ├─ config.py
 │  │  └─ security.py
@@ -27,16 +28,19 @@ backend/
 │  │  ├─ character_repository.py
 │  │  ├─ conversation_repository.py
 │  │  ├─ message_repository.py
+│  │  ├─ memory_repository.py
 │  │  └─ user_repository.py
 │  ├─ schemas/
 │  │  ├─ character.py
 │  │  ├─ chat.py
+│  │  ├─ memory.py
 │  │  └─ user.py
 │  └─ services/
 │     ├─ auth_service.py
 │     ├─ character_service.py
 │     ├─ chat_service.py
-│     └─ llm_service.py
+│     ├─ llm_service.py
+│     └─ memory_service.py
 ├─ alembic/versions/
 ├─ alembic.ini
 ├─ tests/
@@ -53,10 +57,12 @@ backend/
 - `AuthService`: 회원가입, Argon2 비밀번호 검증, JWT 발급
 - `CharacterService`: 캐릭터 CRUD와 캐릭터 프롬프트 구성
 - `ChatService`: 메시지 저장, 최근 문맥 조회, LLM 호출 순서 조정
+- `MemoryService`: 사용자 장기 기억 CRUD와 캐릭터 범위 검증
 - repository: SQLAlchemy 조회 및 추가
 - `LLMProvider`: `generate()`와 `stream()` provider 경계
 
-현재 DB 모델은 `users`, `characters`, `conversations`, `messages`를 포함합니다.
+현재 DB 모델은 `users`, `characters`, `conversations`, `messages`, `memories`를
+포함합니다.
 
 ## 실행
 
@@ -143,6 +149,32 @@ PATCH /characters/{character_id}
 DELETE /characters/{character_id}
 ```
 
+오래 유지할 사용자 정보를 기억으로 저장할 수 있습니다.
+
+```powershell
+$memory = Invoke-RestMethod `
+  -Method Post `
+  -Uri http://127.0.0.1:8000/memories `
+  -Headers $headers `
+  -ContentType "application/json" `
+  -Body (@{
+    content = "사용자는 천문학을 좋아한다"
+    character_id = $character.id
+    importance = 4
+  } | ConvertTo-Json)
+```
+
+```text
+GET    /memories
+GET    /memories/{memory_id}
+PATCH  /memories/{memory_id}
+DELETE /memories/{memory_id}
+```
+
+`character_id`를 생략한 기억은 모든 캐릭터 대화에, 지정한 기억은 해당 캐릭터
+대화에만 사용됩니다. 현재 단계에서는 기억을 명시적으로 관리하며 자동 추출은
+후속 개선 사항입니다.
+
 생성한 캐릭터와 채팅합니다.
 
 ```powershell
@@ -180,6 +212,7 @@ $chat = Invoke-RestMethod `
 ```
 
 `CHAT_HISTORY_LIMIT`에 지정한 최근 메시지 수만 LLM에 전달됩니다. 기본값은 20입니다.
+`CHAT_MEMORY_LIMIT`은 중요도순 활성 기억의 최대 개수이며 기본값은 10입니다.
 첫 요청에서 캐릭터를 생략하면 migration이 생성한 기본 `Assistant` 캐릭터를 사용합니다.
 
 저장 결과는 PostgreSQL에서 확인할 수 있습니다.
@@ -235,7 +268,7 @@ pytest
 3. 영속화: PostgreSQL, SQLAlchemy async, Alembic, 대화·메시지 모델 (완료)
 4. 캐릭터: 캐릭터 CRUD, 시스템 프롬프트, 최근 대화 조립 (완료)
 5. 인증: Argon2 비밀번호 해시, JWT, 사용자별 리소스 권한 (완료)
-6. 장기 기억: 최근 N개 메시지, 요약 및 memory 테이블, 이후 pgvector 검색
+6. 장기 기억: memory CRUD, 중요도 조회, 캐릭터별 문맥 주입 (완료)
 7. 운영 준비: Docker, 구조화 로그, 관측성, rate limit, 테스트와 배포 자동화
 
 ## 저장 동작
@@ -252,7 +285,7 @@ LLM 호출이 실패해도 사용자 메시지는 남습니다. 스트리밍 도
 
 ## 다음 단계에서 개선할 점
 
-- 장기 기억을 저장할 `memories` 테이블
-- 최근 대화와 장기 기억의 프롬프트 역할 분리
-- 대화 요약 및 중요 정보 추출
-- 이후 pgvector embedding 검색
+- Docker와 Docker Compose 기반 실행 환경
+- PostgreSQL 컨테이너와 migration 자동 적용
+- 구조화 로그, health check, rate limit
+- 장기 기억 자동 추출과 pgvector 검색

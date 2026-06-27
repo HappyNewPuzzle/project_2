@@ -12,6 +12,7 @@ POST /chat
   → ChatService.start_turn()
       → 캐릭터와 대화방 조회
       → 사용자 메시지 저장/commit
+      → 전역/캐릭터별 장기 기억 조회
       → 최근 메시지 N개 조회
       → 캐릭터 instructions 조립
   → LLMProvider.generate()
@@ -58,7 +59,9 @@ SQLAlchemyError → PersistenceError → HTTP 503 또는 SSE error
 ```text
 User 1 ─── N Character
 User 1 ─── N Conversation 1 ─── N Message
+User 1 ─── N Memory
 Character 1 ─── N Conversation
+Character 1 ─── N Memory (선택 관계)
 ```
 
 - owner가 없는 기본 캐릭터는 모든 로그인 사용자가 읽을 수 있습니다.
@@ -78,3 +81,19 @@ Character 1 ─── N Conversation
 
 JWT payload는 암호화되지 않으므로 비밀번호나 민감 정보를 넣지 않습니다. 서버는
 `sub`의 UUID로 DB 사용자를 다시 조회해 비활성화와 삭제 상태까지 확인합니다.
+
+## 장기 기억과 최근 대화
+
+최근 대화는 실제 `user`/`assistant` 발화 순서를 보존합니다. 장기 기억은 중요도와
+활성 상태로 선택하며, 캐릭터 규칙보다 낮은 `user` 역할의 배경 문맥 메시지로 최근
+대화 앞에 추가합니다.
+
+```text
+instructions: 서비스 규칙 + 캐릭터 규칙
+input:
+  user: 저장된 장기 기억 배경
+  user/assistant: 최근 대화 N개
+```
+
+사용자가 작성한 기억을 `instructions`에 넣지 않는 이유는 사용자 데이터를
+애플리케이션 개발자 규칙과 같은 높은 권한으로 승격하지 않기 위해서입니다.

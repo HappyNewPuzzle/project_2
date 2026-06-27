@@ -10,6 +10,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     String,
     Text,
     Uuid,
@@ -71,6 +72,11 @@ class User(Base):
         back_populates="user",
         passive_deletes=True,
     )
+    memories: Mapped[list["Memory"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class Character(Base):
@@ -117,6 +123,10 @@ class Character(Base):
         passive_deletes=True,
     )
     owner: Mapped[User | None] = relationship(back_populates="characters")
+    memories: Mapped[list["Memory"]] = relationship(
+        back_populates="character",
+        passive_deletes=True,
+    )
 
 
 class Conversation(Base):
@@ -200,3 +210,62 @@ class Message(Base):
     )
 
     conversation: Mapped[Conversation] = relationship(back_populates="messages")
+
+
+class Memory(Base):
+    """최근 대화 창 밖에서도 유지할 사용자 장기 기억 한 건."""
+
+    __tablename__ = "memories"
+    __table_args__ = (
+        CheckConstraint(
+            "importance BETWEEN 1 AND 5",
+            name="ck_memories_importance",
+        ),
+        # 채팅 시 사용자/캐릭터/활성 상태로 거른 뒤 중요도순 조회한다.
+        Index(
+            "ix_memories_lookup",
+            "user_id",
+            "character_id",
+            "is_active",
+            "importance",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    # NULL이면 모든 캐릭터, UUID면 해당 캐릭터와 대화할 때만 사용한다.
+    character_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("characters.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    importance: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        server_default="true",
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship(back_populates="memories")
+    character: Mapped[Character | None] = relationship(back_populates="memories")

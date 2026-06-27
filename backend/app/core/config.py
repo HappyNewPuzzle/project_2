@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     database_echo: bool = False
     # 너무 긴 대화 전체를 보내지 않고 최근 메시지만 LLM 문맥에 포함한다.
     chat_history_limit: int = Field(default=20, ge=1, le=100)
+    # 중요도 순으로 가져올 활성 장기 기억의 최대 개수다.
+    chat_memory_limit: int = Field(default=10, ge=0, le=50)
 
     # API 키가 없어도 앱과 문서는 실행되며, 실제 채팅 요청에서 명확한 오류를 낸다.
     openai_api_key: str | None = None

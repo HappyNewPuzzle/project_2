@@ -16,6 +16,7 @@ from app.services.auth_service import AuthService
 from app.services.chat_service import ChatService
 from app.services.character_service import CharacterService
 from app.services.llm_service import LLMProvider, get_llm_provider
+from app.services.memory_service import MemoryService
 
 # 타입 별칭에 Depends를 함께 넣으면 라우터 함수의 매개변수가 간결해진다.
 SessionDependency = Annotated[AsyncSession, Depends(get_db_session)]
@@ -84,6 +85,7 @@ def get_chat_service(
         llm,
         user_id=current_user.id,
         history_limit=get_settings().chat_history_limit,
+        memory_limit=get_settings().chat_memory_limit,
     )
 
 
@@ -103,3 +105,15 @@ CharacterServiceDependency = Annotated[
     CharacterService,
     Depends(get_character_service),
 ]
+
+
+def get_memory_service(
+    session: SessionDependency,
+    current_user: CurrentUserDependency,
+) -> MemoryService:
+    """현재 사용자 범위로 제한된 장기 기억 서비스를 만든다."""
+
+    return MemoryService(session, user_id=current_user.id)
+
+
+MemoryServiceDependency = Annotated[MemoryService, Depends(get_memory_service)]

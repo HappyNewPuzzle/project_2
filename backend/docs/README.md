@@ -11,6 +11,7 @@
 4. [3단계: PostgreSQL 영속화](step-03-persistence.md)
 5. [4단계: 캐릭터와 최근 문맥](step-04-character-context.md)
 6. [5단계: JWT 인증과 소유권](step-05-authentication.md)
+7. [6단계: 장기 기억](step-06-long-term-memory.md)
 
 각 문서를 읽은 뒤 문서에 링크된 실제 파일을 나란히 열어 보는 것을 권장합니다.
 라우터에서 시작해 서비스, repository, DB 모델 순으로 따라가면 요청 한 건의 흐름을
