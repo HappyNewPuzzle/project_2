@@ -22,6 +22,10 @@ class CharacterPersistenceError(RuntimeError):
     """DB 장애를 캐릭터 도메인의 공통 저장 오류로 감싼다."""
 
 
+class CharacterAccessDeniedError(PermissionError):
+    """다른 사용자의 캐릭터를 수정하거나 삭제하려 할 때 발생한다."""
+
+
 def build_character_instructions(character: Character) -> str:
     """구조화된 캐릭터 필드를 LLM용 instructions 문자열로 조립한다."""
 
@@ -45,15 +49,20 @@ def build_character_instructions(character: Character) -> str:
 class CharacterService:
     """캐릭터 트랜잭션과 삭제 제한 같은 도메인 규칙을 처리한다."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, *, user_id: uuid.UUID) -> None:
         self._session = session
+        self._user_id = user_id
         self._characters = CharacterRepository(session)
 
     async def list(self, *, offset: int, limit: int) -> list[Character]:
         """캐릭터 목록을 repository에서 조회하고 DB 오류를 변환한다."""
 
         try:
-            return await self._characters.list(offset=offset, limit=limit)
+            return await self._characters.list_for_user(
+                self._user_id,
+                offset=offset,
+                limit=limit,
+            )
         except SQLAlchemyError as exc:
             raise CharacterPersistenceError("Failed to list characters") from exc
 
@@ -66,13 +75,18 @@ class CharacterService:
             raise CharacterPersistenceError("Failed to get character") from exc
         if character is None:
             raise CharacterNotFoundError(str(character_id))
+        if character.owner_id not in (None, self._user_id):
+            raise CharacterAccessDeniedError(str(character_id))
         return character
 
     async def create(self, data: CharacterCreate) -> Character:
         """캐릭터 생성 전체를 하나의 트랜잭션으로 확정한다."""
 
         try:
-            character = await self._characters.create(data)
+            character = await self._characters.create(
+                data,
+                owner_id=self._user_id,
+            )
             await self._session.commit()
             # commit 후 DB가 만든 시간값까지 응답에 포함하려고 다시 읽는다.
             await self._session.refresh(character)
@@ -90,6 +104,8 @@ class CharacterService:
         """전달된 필드만 수정하고 최신 DB 상태를 반환한다."""
 
         character = await self.get(character_id)
+        if character.owner_id != self._user_id:
+            raise CharacterAccessDeniedError(str(character_id))
         try:
             self._characters.update(character, data)
             await self._session.commit()
@@ -107,6 +123,8 @@ class CharacterService:
             raise CharacterInUseError("The default character cannot be deleted")
 
         character = await self.get(character_id)
+        if character.owner_id != self._user_id:
+            raise CharacterAccessDeniedError(str(character_id))
         try:
             await self._characters.delete(character)
             await self._session.commit()

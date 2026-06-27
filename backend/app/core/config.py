@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     # 한 응답이 과도하게 길어져 비용이 커지는 것을 제한한다.
     llm_max_output_tokens: int = 1000
 
+    # JWT는 서명되지만 암호화되지는 않는다. secret은 토큰 위조 방지에 사용한다.
+    jwt_secret_key: str = Field(
+        default="dev-only-change-this-secret-key-123456",
+        min_length=32,
+    )
+    jwt_algorithm: Literal["HS256"] = "HS256"
+    access_token_expire_minutes: int = Field(default=30, ge=1, le=10_080)
+
     # 실행 디렉터리의 .env를 읽고, 아직 사용하지 않는 키는 무시한다.
     model_config = SettingsConfigDict(
         env_file=".env",

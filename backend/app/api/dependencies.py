@@ -2,11 +2,17 @@
 
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.security import InvalidAccessTokenError, decode_access_token
+from app.db.models import User
 from app.db.session import get_db_session
+from app.repositories.user_repository import UserRepository
+from app.services.auth_service import AuthService
 from app.services.chat_service import ChatService
 from app.services.character_service import CharacterService
 from app.services.llm_service import LLMProvider, get_llm_provider
@@ -15,16 +21,68 @@ from app.services.llm_service import LLMProvider, get_llm_provider
 SessionDependency = Annotated[AsyncSession, Depends(get_db_session)]
 LLMDependency = Annotated[LLMProvider, Depends(get_llm_provider)]
 
+# Swagger UI의 Authorize 버튼과 Authorization: Bearer 헤더 파싱을 함께 제공한다.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+TokenDependency = Annotated[str, Depends(oauth2_scheme)]
+
+
+def get_auth_service(session: SessionDependency) -> AuthService:
+    """요청별 DB 세션으로 인증 서비스를 만든다."""
+
+    return AuthService(session)
+
+
+AuthServiceDependency = Annotated[AuthService, Depends(get_auth_service)]
+
+
+async def get_current_user(
+    token: TokenDependency,
+    session: SessionDependency,
+) -> User:
+    """JWT를 검증하고 DB에서 현재 활성 사용자를 조회한다."""
+
+    credentials_error = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        user_id = decode_access_token(token)
+    except InvalidAccessTokenError as exc:
+        raise credentials_error from exc
+
+    try:
+        user = await UserRepository(session).get(user_id)
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service is unavailable.",
+        ) from exc
+
+    if user is None:
+        raise credentials_error
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Inactive user.",
+        )
+    return user
+
+
+CurrentUserDependency = Annotated[User, Depends(get_current_user)]
+
 
 def get_chat_service(
     session: SessionDependency,
     llm: LLMDependency,
+    current_user: CurrentUserDependency,
 ) -> ChatService:
     """한 DB 세션과 LLM provider를 묶어 요청 전용 ChatService를 만든다."""
 
     return ChatService(
         session,
         llm,
+        user_id=current_user.id,
         history_limit=get_settings().chat_history_limit,
     )
 
@@ -32,10 +90,13 @@ def get_chat_service(
 ChatServiceDependency = Annotated[ChatService, Depends(get_chat_service)]
 
 
-def get_character_service(session: SessionDependency) -> CharacterService:
+def get_character_service(
+    session: SessionDependency,
+    current_user: CurrentUserDependency,
+) -> CharacterService:
     """같은 요청의 DB 세션을 사용하는 CharacterService를 만든다."""
 
-    return CharacterService(session)
+    return CharacterService(session, user_id=current_user.id)
 
 
 CharacterServiceDependency = Annotated[

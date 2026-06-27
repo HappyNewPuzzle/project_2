@@ -6,6 +6,8 @@
 
 ```text
 POST /chat
+  → Bearer JWT 검증
+  → 현재 사용자 DB 조회
   → ChatRequest 검증
   → ChatService.start_turn()
       → 캐릭터와 대화방 조회
@@ -54,11 +56,25 @@ SQLAlchemyError → PersistenceError → HTTP 503 또는 SSE error
 ## 데이터 관계
 
 ```text
-Character 1 ─── N Conversation 1 ─── N Message
+User 1 ─── N Character
+User 1 ─── N Conversation 1 ─── N Message
+Character 1 ─── N Conversation
 ```
 
+- owner가 없는 기본 캐릭터는 모든 로그인 사용자가 읽을 수 있습니다.
+- 사용자는 자신이 만든 캐릭터만 수정·삭제할 수 있습니다.
+- 사용자는 자신의 대화방만 이어 갈 수 있습니다.
 - 캐릭터가 사용 중이면 삭제할 수 없습니다.
 - 대화방을 삭제하면 소속 메시지는 함께 삭제됩니다.
 - 하나의 대화방은 시작할 때 선택한 캐릭터를 계속 사용합니다.
 
-5단계 인증에서는 `User`가 추가되고 캐릭터와 대화방에 소유권이 연결될 예정입니다.
+## 인증 흐름
+
+```text
+회원가입 → Argon2 hash만 저장
+로그인 → 비밀번호 verify → sub=user UUID인 JWT 발급
+보호 API → Bearer JWT 서명/만료 검증 → 현재 활성 사용자 조회
+```
+
+JWT payload는 암호화되지 않으므로 비밀번호나 민감 정보를 넣지 않습니다. 서버는
+`sub`의 UUID로 DB 사용자를 다시 조회해 비활성화와 삭제 상태까지 확인합니다.

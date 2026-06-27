@@ -5,17 +5,20 @@
 
 ## 현재 단계
 
-4단계까지 구현되어 있습니다. 캐릭터별 성격·말투·시스템 프롬프트를 설정하고,
-최근 대화 기록을 포함해 일반 JSON 또는 SSE 스트리밍 채팅을 생성합니다.
+5단계까지 구현되어 있습니다. 회원가입·JWT 로그인을 지원하며, 로그인한 사용자만
+자신의 캐릭터와 대화 기록에 접근할 수 있습니다.
 
 ```text
 backend/
 ├─ app/
 │  ├─ main.py
 │  ├─ api/routes/
+│  │  ├─ auth.py
 │  │  ├─ chat.py
 │  │  └─ characters.py
-│  ├─ core/config.py
+│  ├─ core/
+│  │  ├─ config.py
+│  │  └─ security.py
 │  ├─ db/
 │  │  ├─ base.py
 │  │  ├─ models.py
@@ -23,11 +26,14 @@ backend/
 │  ├─ repositories/
 │  │  ├─ character_repository.py
 │  │  ├─ conversation_repository.py
-│  │  └─ message_repository.py
+│  │  ├─ message_repository.py
+│  │  └─ user_repository.py
 │  ├─ schemas/
 │  │  ├─ character.py
-│  │  └─ chat.py
+│  │  ├─ chat.py
+│  │  └─ user.py
 │  └─ services/
+│     ├─ auth_service.py
 │     ├─ character_service.py
 │     ├─ chat_service.py
 │     └─ llm_service.py
@@ -44,13 +50,13 @@ backend/
 책임은 다음처럼 분리됩니다.
 
 - 라우터: HTTP 입출력, SSE 형식, 상태 코드
+- `AuthService`: 회원가입, Argon2 비밀번호 검증, JWT 발급
 - `CharacterService`: 캐릭터 CRUD와 캐릭터 프롬프트 구성
 - `ChatService`: 메시지 저장, 최근 문맥 조회, LLM 호출 순서 조정
 - repository: SQLAlchemy 조회 및 추가
 - `LLMProvider`: `generate()`와 `stream()` provider 경계
 
-현재 DB 모델은 `characters`, `conversations`, `messages`를 포함합니다.
-사용자와 소유권 관계는 인증을 구현하는 5단계에서 추가합니다.
+현재 DB 모델은 `users`, `characters`, `conversations`, `messages`를 포함합니다.
 
 ## 실행
 
@@ -70,8 +76,9 @@ PostgreSQL에 데이터베이스를 생성합니다.
 psql -U postgres -c "CREATE DATABASE character_chat;"
 ```
 
-`.env`의 `DATABASE_URL`과 `OPENAI_API_KEY`를 환경에 맞게 수정하고 migration을
-적용합니다.
+`.env`의 `DATABASE_URL`, `OPENAI_API_KEY`, `JWT_SECRET_KEY`를 환경에 맞게
+수정하고 migration을 적용합니다. 운영 환경의 JWT secret에는 긴 무작위 값을
+사용해야 합니다.
 
 ```powershell
 alembic upgrade head
@@ -87,12 +94,36 @@ API 문서는 `http://127.0.0.1:8000/docs`에서 확인할 수 있습니다.
 
 ## 테스트
 
+먼저 회원가입하고 로그인합니다.
+
+```powershell
+$email = "learner@example.com"
+$password = "strong-password"
+
+$user = Invoke-RestMethod `
+  -Method Post `
+  -Uri http://127.0.0.1:8000/auth/register `
+  -ContentType "application/json" `
+  -Body (@{ email = $email; password = $password } | ConvertTo-Json)
+
+$token = Invoke-RestMethod `
+  -Method Post `
+  -Uri http://127.0.0.1:8000/auth/login `
+  -ContentType "application/x-www-form-urlencoded" `
+  -Body @{ username = $email; password = $password }
+
+$headers = @{ Authorization = "Bearer $($token.access_token)" }
+```
+
+`/auth/login`은 OAuth2 표준 form의 `username` 필드에 이메일을 받습니다.
+
 캐릭터를 생성합니다.
 
 ```powershell
 $character = Invoke-RestMethod `
   -Method Post `
   -Uri http://127.0.0.1:8000/characters `
+  -Headers $headers `
   -ContentType "application/json" `
   -Body '{
     "name": "루나",
@@ -123,6 +154,7 @@ $body = @{
 $chat = Invoke-RestMethod `
   -Method Post `
   -Uri http://127.0.0.1:8000/chat `
+  -Headers $headers `
   -ContentType "application/json" `
   -Body $body
 ```
@@ -162,6 +194,7 @@ psql -U postgres -d character_chat `
 ```powershell
 curl.exe -N `
   -X POST http://127.0.0.1:8000/chat/stream `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" `
   -H "Content-Type: application/json" `
   -d '{"message":"스트리밍으로 자기소개해줘"}'
 ```
@@ -192,8 +225,8 @@ API 키 없이 자동 테스트:
 pytest
 ```
 
-테스트에서는 FastAPI 의존성을 가짜 `ChatService`로 바꾸므로 API 비용과 DB 연결이
-발생하지 않습니다.
+라우터 테스트에서는 FastAPI 의존성을 가짜 서비스로 바꾸므로 API 비용과 DB 연결이
+발생하지 않습니다. 보안 유틸리티 테스트는 실제 Argon2 해시와 JWT 왕복을 확인합니다.
 
 ## 전체 로드맵
 
@@ -201,7 +234,7 @@ pytest
 2. 스트리밍: provider의 stream 인터페이스와 `StreamingResponse`/SSE 추가 (완료)
 3. 영속화: PostgreSQL, SQLAlchemy async, Alembic, 대화·메시지 모델 (완료)
 4. 캐릭터: 캐릭터 CRUD, 시스템 프롬프트, 최근 대화 조립 (완료)
-5. 인증: 비밀번호 해시, JWT access token, 사용자별 리소스 권한
+5. 인증: Argon2 비밀번호 해시, JWT, 사용자별 리소스 권한 (완료)
 6. 장기 기억: 최근 N개 메시지, 요약 및 memory 테이블, 이후 pgvector 검색
 7. 운영 준비: Docker, 구조화 로그, 관측성, rate limit, 테스트와 배포 자동화
 
@@ -219,7 +252,7 @@ LLM 호출이 실패해도 사용자 메시지는 남습니다. 스트리밍 도
 
 ## 다음 단계에서 개선할 점
 
-- `users` 테이블과 비밀번호 해시
-- 회원가입 및 로그인 API
-- JWT access token 검증
-- 캐릭터와 대화방 소유권 및 접근 제어
+- 장기 기억을 저장할 `memories` 테이블
+- 최근 대화와 장기 기억의 프롬프트 역할 분리
+- 대화 요약 및 중요 정보 추출
+- 이후 pgvector embedding 검색

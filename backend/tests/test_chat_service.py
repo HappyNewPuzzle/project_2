@@ -5,11 +5,14 @@ import uuid
 from collections.abc import AsyncGenerator, Sequence
 from types import SimpleNamespace
 
+import pytest
+
 from app.db.models import DEFAULT_CHARACTER_ID, MessageRole
-from app.services.chat_service import ChatService
+from app.services.chat_service import ChatService, ConversationNotFoundError
 from app.services.llm_service import LLMMessage
 
 CONVERSATION_ID = uuid.UUID("33333333-3333-3333-3333-333333333333")
+USER_ID = uuid.UUID("55555555-5555-5555-5555-555555555555")
 
 
 class FakeSession:
@@ -35,6 +38,7 @@ class FakeCharacterRepository:
         self._events.append("get_character")
         return SimpleNamespace(
             id=character_id,
+            owner_id=USER_ID,
             name="Luna",
             description="A moon librarian.",
             personality="Calm and curious.",
@@ -49,11 +53,17 @@ class FakeConversationRepository:
     def __init__(self, events: list[str]) -> None:
         self._events = events
 
-    async def create(self, character_id: uuid.UUID) -> SimpleNamespace:
+    async def create(
+        self,
+        character_id: uuid.UUID,
+        *,
+        user_id: uuid.UUID,
+    ) -> SimpleNamespace:
         self._events.append("create_conversation")
         return SimpleNamespace(
             id=CONVERSATION_ID,
             character_id=character_id,
+            user_id=user_id,
         )
 
     async def get(self, conversation_id: uuid.UUID) -> SimpleNamespace:
@@ -61,6 +71,7 @@ class FakeConversationRepository:
         return SimpleNamespace(
             id=conversation_id,
             character_id=DEFAULT_CHARACTER_ID,
+            user_id=USER_ID,
         )
 
     async def touch(self, conversation_id: uuid.UUID) -> None:
@@ -134,6 +145,7 @@ def test_reply_uses_character_and_recent_history() -> None:
     service = ChatService(  # type: ignore[arg-type]
         FakeSession(events),
         llm,
+        user_id=USER_ID,
         history_limit=20,
     )
     service._characters = FakeCharacterRepository(events)  # type: ignore[assignment]
@@ -164,3 +176,22 @@ def test_reply_uses_character_and_recent_history() -> None:
         "touch_conversation",
         "commit",
     ]
+
+
+def test_other_user_cannot_continue_conversation() -> None:
+    """대화방 user_id와 현재 사용자가 다르면 존재하지 않는 것처럼 처리한다."""
+
+    events: list[str] = []
+    other_user_id = uuid.UUID("88888888-8888-8888-8888-888888888888")
+    service = ChatService(  # type: ignore[arg-type]
+        FakeSession(events),
+        FakeLLMProvider(events),
+        user_id=other_user_id,
+        history_limit=20,
+    )
+    service._characters = FakeCharacterRepository(events)  # type: ignore[assignment]
+    service._conversations = FakeConversationRepository(events)  # type: ignore[assignment]
+    service._messages = FakeMessageRepository(events)  # type: ignore[assignment]
+
+    with pytest.raises(ConversationNotFoundError):
+        asyncio.run(service.reply("Hello", CONVERSATION_ID, None))

@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.routes.auth import router as auth_router
 from app.api.routes.chat import router as chat_router
 from app.api.routes.characters import router as characters_router
 from app.core.config import get_settings
@@ -39,11 +40,12 @@ def create_app() -> FastAPI:
     # lifespan을 넘기면 FastAPI가 서버 종료 시 DB 엔진 정리를 호출한다.
     app = FastAPI(
         title=settings.app_name,
-        version="0.3.0",
+        version="0.4.0",
         lifespan=lifespan,
     )
 
     # 기능별 라우터를 앱에 등록한다. 실제 URL 처리는 각 routes 파일이 담당한다.
+    app.include_router(auth_router)
     app.include_router(chat_router)
     app.include_router(characters_router)
     return app

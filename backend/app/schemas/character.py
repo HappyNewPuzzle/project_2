@@ -35,6 +35,8 @@ class CharacterResponse(BaseModel):
     """DB의 Character ORM 객체를 API JSON으로 직렬화한다."""
 
     id: uuid.UUID
+    # NULL이면 공용 읽기 전용 캐릭터, UUID면 해당 사용자가 소유한다.
+    owner_id: uuid.UUID | None
     name: str
     description: str
     personality: str

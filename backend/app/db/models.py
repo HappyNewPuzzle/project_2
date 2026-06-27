@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -20,6 +21,7 @@ from app.db.base import Base
 
 # 캐릭터를 지정하지 않은 기존 API 요청이 사용할 고정 기본 캐릭터 ID다.
 DEFAULT_CHARACTER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+LEGACY_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000002")
 
 
 class MessageRole(str, enum.Enum):
@@ -27,6 +29,48 @@ class MessageRole(str, enum.Enum):
 
     USER = "user"
     ASSISTANT = "assistant"
+
+
+class User(Base):
+    """회원 계정과 인증에 필요한 최소 정보를 저장한다."""
+
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    # 로그인 식별자는 소문자로 정규화하며 DB unique 제약으로 중복을 막는다.
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
+    # 원문 비밀번호 대신 Argon2 해시만 저장한다.
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        server_default="true",
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    characters: Mapped[list["Character"]] = relationship(
+        back_populates="owner",
+        passive_deletes=True,
+    )
+    conversations: Mapped[list["Conversation"]] = relationship(
+        back_populates="user",
+        passive_deletes=True,
+    )
 
 
 class Character(Base):
@@ -39,6 +83,13 @@ class Character(Base):
         Uuid(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
+    )
+    # NULL인 기본/legacy 캐릭터는 공용 읽기 전용 캐릭터로 취급한다.
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
     )
     # 이름은 목록에 자주 표시되므로 길이가 제한된 문자열로 저장한다.
     name: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -65,6 +116,7 @@ class Character(Base):
         back_populates="character",
         passive_deletes=True,
     )
+    owner: Mapped[User | None] = relationship(back_populates="characters")
 
 
 class Conversation(Base):
@@ -76,6 +128,13 @@ class Conversation(Base):
         Uuid(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
+    )
+    # 모든 대화방은 한 사용자에게 속해 사용자별 기록을 분리한다.
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
     )
     # 대화 도중 캐릭터가 바뀌지 않도록 대화방 자체가 캐릭터를 참조한다.
     character_id: Mapped[uuid.UUID] = mapped_column(
@@ -104,6 +163,7 @@ class Conversation(Base):
         passive_deletes=True,
     )
     character: Mapped[Character] = relationship(back_populates="conversations")
+    user: Mapped[User] = relationship(back_populates="conversations")
 
 
 class Message(Base):

@@ -13,6 +13,7 @@ from app.schemas.character import (
     CharacterUpdate,
 )
 from app.services.character_service import (
+    CharacterAccessDeniedError,
     CharacterInUseError,
     CharacterNotFoundError,
     CharacterPersistenceError,
@@ -79,6 +80,11 @@ async def get_character(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Character not found.",
         ) from exc
+    except CharacterAccessDeniedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this character.",
+        ) from exc
     except CharacterPersistenceError as exc:
         logger.exception("Failed to get character")
         raise HTTPException(
@@ -102,6 +108,11 @@ async def update_character(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Character not found.",
+        ) from exc
+    except CharacterAccessDeniedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this character.",
         ) from exc
     except CharacterPersistenceError as exc:
         logger.exception("Failed to update character")
@@ -128,6 +139,11 @@ async def delete_character(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Character not found.",
+        ) from exc
+    except CharacterAccessDeniedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this character.",
         ) from exc
     except CharacterInUseError as exc:
         raise HTTPException(

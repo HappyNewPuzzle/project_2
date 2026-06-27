@@ -10,6 +10,7 @@ from app.api.dependencies import get_character_service
 from app.main import app
 
 CHARACTER_ID = uuid.UUID("44444444-4444-4444-4444-444444444444")
+OWNER_ID = uuid.UUID("55555555-5555-5555-5555-555555555555")
 
 
 def make_character() -> SimpleNamespace:
@@ -18,6 +19,7 @@ def make_character() -> SimpleNamespace:
     now = datetime.now(timezone.utc)
     return SimpleNamespace(
         id=CHARACTER_ID,
+        owner_id=OWNER_ID,
         name="Luna",
         description="A moon librarian.",
         personality="Calm and curious.",

@@ -58,10 +58,12 @@ class ChatService:
         session: AsyncSession,
         llm: LLMProvider,
         *,
+        user_id: uuid.UUID,
         history_limit: int,
     ) -> None:
         self._session = session
         self._llm = llm
+        self._user_id = user_id
         self._history_limit = history_limit
         self._characters = CharacterRepository(session)
         self._conversations = ConversationRepository(session)
@@ -80,13 +82,22 @@ class ChatService:
                 # 새 대화는 요청 캐릭터 또는 항상 존재하는 기본 캐릭터를 사용한다.
                 active_character_id = character_id or DEFAULT_CHARACTER_ID
                 character = await self._characters.get(active_character_id)
-                if character is None:
+                if (
+                    character is None
+                    or character.owner_id not in (None, self._user_id)
+                ):
                     raise CharacterNotFoundError(str(active_character_id))
-                conversation = await self._conversations.create(active_character_id)
+                conversation = await self._conversations.create(
+                    active_character_id,
+                    user_id=self._user_id,
+                )
             else:
                 # 기존 대화는 DB에 저장된 캐릭터를 계속 사용한다.
                 conversation = await self._conversations.get(conversation_id)
-                if conversation is None:
+                if (
+                    conversation is None
+                    or conversation.user_id != self._user_id
+                ):
                     raise ConversationNotFoundError(str(conversation_id))
                 if (
                     character_id is not None
@@ -95,7 +106,10 @@ class ChatService:
                     # 한 대화 안에서 인격과 문맥이 섞이는 것을 막는다.
                     raise ConversationCharacterMismatchError(str(conversation_id))
                 character = await self._characters.get(conversation.character_id)
-                if character is None:
+                if (
+                    character is None
+                    or character.owner_id not in (None, self._user_id)
+                ):
                     raise CharacterNotFoundError(str(conversation.character_id))
 
             # LLM 호출 전에 사용자 메시지를 먼저 기록한다.

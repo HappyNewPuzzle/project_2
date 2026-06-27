@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Character
@@ -20,21 +20,38 @@ class CharacterRepository:
 
         return await self._session.get(Character, character_id)
 
-    async def list(self, *, offset: int, limit: int) -> list[Character]:
-        """페이지네이션 범위의 캐릭터를 안정된 순서로 반환한다."""
+    async def list_for_user(
+        self,
+        user_id: uuid.UUID,
+        *,
+        offset: int,
+        limit: int,
+    ) -> list[Character]:
+        """공용 캐릭터와 현재 사용자가 소유한 캐릭터만 반환한다."""
 
         statement = (
             select(Character)
+            .where(
+                or_(
+                    Character.owner_id == user_id,
+                    Character.owner_id.is_(None),
+                )
+            )
             .order_by(Character.created_at, Character.id)
             .offset(offset)
             .limit(limit)
         )
         return list((await self._session.scalars(statement)).all())
 
-    async def create(self, data: CharacterCreate) -> Character:
+    async def create(
+        self,
+        data: CharacterCreate,
+        *,
+        owner_id: uuid.UUID,
+    ) -> Character:
         """검증이 끝난 Pydantic 데이터를 ORM 객체로 변환한다."""
 
-        character = Character(**data.model_dump())
+        character = Character(owner_id=owner_id, **data.model_dump())
         self._session.add(character)
         await self._session.flush()
         return character
