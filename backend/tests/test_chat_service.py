@@ -1,3 +1,5 @@
+"""ChatService의 저장 순서, 프롬프트, 최근 문맥 조립을 단위 테스트한다."""
+
 import asyncio
 import uuid
 from collections.abc import AsyncGenerator, Sequence
@@ -11,6 +13,8 @@ CONVERSATION_ID = uuid.UUID("33333333-3333-3333-3333-333333333333")
 
 
 class FakeSession:
+    """commit/rollback 호출 순서를 기록하는 최소 가짜 세션."""
+
     def __init__(self, events: list[str]) -> None:
         self._events = events
 
@@ -22,6 +26,8 @@ class FakeSession:
 
 
 class FakeCharacterRepository:
+    """고정된 학습용 캐릭터를 반환한다."""
+
     def __init__(self, events: list[str]) -> None:
         self._events = events
 
@@ -38,6 +44,8 @@ class FakeCharacterRepository:
 
 
 class FakeConversationRepository:
+    """DB 대신 고정 대화방을 만들고 이벤트 순서를 기록한다."""
+
     def __init__(self, events: list[str]) -> None:
         self._events = events
 
@@ -60,6 +68,8 @@ class FakeConversationRepository:
 
 
 class FakeMessageRepository:
+    """과거 문맥 두 건과 새 메시지를 메모리 목록으로 관리한다."""
+
     def __init__(self, events: list[str]) -> None:
         self._events = events
         self._messages = [
@@ -88,6 +98,8 @@ class FakeMessageRepository:
 
 
 class FakeLLMProvider:
+    """실제로 API를 호출하지 않고 전달받은 프롬프트를 보관한다."""
+
     def __init__(self, events: list[str]) -> None:
         self._events = events
         self.messages: Sequence[LLMMessage] = ()
@@ -115,6 +127,8 @@ class FakeLLMProvider:
 
 
 def test_reply_uses_character_and_recent_history() -> None:
+    """사용자 저장→문맥 조회→LLM→AI 저장 순서와 입력 내용을 함께 검증한다."""
+
     events: list[str] = []
     llm = FakeLLMProvider(events)
     service = ChatService(  # type: ignore[arg-type]

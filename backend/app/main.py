@@ -1,3 +1,5 @@
+"""FastAPI 애플리케이션을 만들고 라우터와 종료 처리를 연결하는 진입점."""
+
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -12,25 +14,40 @@ from app.db.session import get_engine
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """서버 수명 주기를 관리한다.
+
+    yield 이전은 시작 시점, yield 이후는 종료 시점에 실행된다.
+    현재는 시작 작업이 없고 종료할 때 DB 커넥션 풀만 안전하게 닫는다.
+    """
+
     yield
     await get_engine().dispose()
 
 
 def create_app() -> FastAPI:
+    """설정값을 읽어 하나의 FastAPI 앱 객체를 조립한다."""
+
+    # get_settings()는 캐시되므로 애플리케이션 전체에서 같은 설정을 공유한다.
     settings = get_settings()
+
+    # 최소한의 공통 로그 형식을 지정해 개발 중 오류 위치를 추적하기 쉽게 한다.
     logging.basicConfig(
         level=settings.log_level,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
+    # lifespan을 넘기면 FastAPI가 서버 종료 시 DB 엔진 정리를 호출한다.
     app = FastAPI(
         title=settings.app_name,
         version="0.3.0",
         lifespan=lifespan,
     )
+
+    # 기능별 라우터를 앱에 등록한다. 실제 URL 처리는 각 routes 파일이 담당한다.
     app.include_router(chat_router)
     app.include_router(characters_router)
     return app
 
 
+# uvicorn app.main:app 명령이 가져가는 실제 애플리케이션 객체다.
 app = create_app()

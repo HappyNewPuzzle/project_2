@@ -1,1 +1,1 @@
-"""AI character chat backend application."""
+"""AI 캐릭터 채팅 백엔드의 최상위 Python 패키지."""

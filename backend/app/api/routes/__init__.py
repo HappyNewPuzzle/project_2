@@ -1,1 +1,1 @@
-"""API route modules."""
+"""기능별 FastAPI 라우터 모듈 패키지."""

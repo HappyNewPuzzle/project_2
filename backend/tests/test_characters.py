@@ -1,3 +1,5 @@
+"""가짜 CharacterService로 캐릭터 REST API 계약을 검증한다."""
+
 import uuid
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -11,6 +13,8 @@ CHARACTER_ID = uuid.UUID("44444444-4444-4444-4444-444444444444")
 
 
 def make_character() -> SimpleNamespace:
+    """응답 스키마가 읽을 수 있는 ORM 유사 테스트 객체를 만든다."""
+
     now = datetime.now(timezone.utc)
     return SimpleNamespace(
         id=CHARACTER_ID,
@@ -25,6 +29,8 @@ def make_character() -> SimpleNamespace:
 
 
 class FakeCharacterService:
+    """DB 없이 CRUD 라우터의 직렬화와 상태 코드만 테스트한다."""
+
     async def create(self, payload: object) -> SimpleNamespace:
         return make_character()
 
@@ -56,6 +62,8 @@ client = TestClient(app)
 
 
 def test_create_and_list_characters() -> None:
+    """생성은 201, 목록은 캐릭터 배열을 반환하는지 확인한다."""
+
     create_response = client.post(
         "/characters",
         json={"name": "Luna"},
@@ -69,6 +77,8 @@ def test_create_and_list_characters() -> None:
 
 
 def test_update_and_delete_character() -> None:
+    """부분 수정 결과와 본문 없는 204 삭제 응답을 확인한다."""
+
     update_response = client.patch(
         f"/characters/{CHARACTER_ID}",
         json={"name": "Updated Luna"},

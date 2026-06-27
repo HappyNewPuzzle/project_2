@@ -1,1 +1,1 @@
-"""Database models and session management."""
+"""DB 모델, Base, 비동기 세션 관리 패키지."""

@@ -1,3 +1,5 @@
+"""캐릭터 생성·목록·상세·수정·삭제 REST API."""
+
 import logging
 import uuid
 from typing import Annotated
@@ -30,6 +32,8 @@ async def create_character(
     payload: CharacterCreate,
     service: CharacterServiceDependency,
 ) -> CharacterResponse:
+    """검증된 캐릭터 데이터를 저장하고 201 응답을 반환한다."""
+
     try:
         character = await service.create(payload)
     except CharacterPersistenceError as exc:
@@ -38,6 +42,7 @@ async def create_character(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Character could not be stored.",
         ) from exc
+    # ORM 객체를 외부 공개용 Pydantic 응답으로 명시적으로 변환한다.
     return CharacterResponse.model_validate(character)
 
 
@@ -47,6 +52,8 @@ async def list_characters(
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> list[CharacterResponse]:
+    """offset/limit 기반으로 캐릭터 목록을 조회한다."""
+
     try:
         characters = await service.list(offset=offset, limit=limit)
     except CharacterPersistenceError as exc:
@@ -63,6 +70,8 @@ async def get_character(
     character_id: uuid.UUID,
     service: CharacterServiceDependency,
 ) -> CharacterResponse:
+    """UUID에 해당하는 캐릭터 하나를 반환한다."""
+
     try:
         character = await service.get(character_id)
     except CharacterNotFoundError as exc:
@@ -85,6 +94,8 @@ async def update_character(
     payload: CharacterUpdate,
     service: CharacterServiceDependency,
 ) -> CharacterResponse:
+    """요청 JSON에 포함된 필드만 부분 수정한다."""
+
     try:
         character = await service.update(character_id, payload)
     except CharacterNotFoundError as exc:
@@ -109,6 +120,8 @@ async def delete_character(
     character_id: uuid.UUID,
     service: CharacterServiceDependency,
 ) -> Response:
+    """사용 중이지 않은 캐릭터를 삭제하고 본문 없는 204를 반환한다."""
+
     try:
         await service.delete(character_id)
     except CharacterNotFoundError as exc:

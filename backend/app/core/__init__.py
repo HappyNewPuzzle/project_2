@@ -1,1 +1,1 @@
-"""Core configuration package."""
+"""애플리케이션 전역 설정과 공통 기능 패키지."""

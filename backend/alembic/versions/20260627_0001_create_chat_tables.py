@@ -17,6 +17,9 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    """대화방 테이블을 먼저 만들고 이를 참조하는 메시지 테이블을 만든다."""
+
+    # 부모 테이블인 conversations가 외래 키 대상이므로 먼저 생성한다.
     op.create_table(
         "conversations",
         sa.Column("id", sa.Uuid(), nullable=False),
@@ -34,6 +37,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
+    # messages는 role 제약과 conversations CASCADE 외래 키를 가진다.
     op.create_table(
         "messages",
         sa.Column("id", sa.Uuid(), nullable=False),
@@ -57,6 +61,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
+    # 최근 대화 조회 패턴에 맞춘 복합 인덱스다.
     op.create_index(
         "ix_messages_conversation_created",
         "messages",
@@ -65,6 +70,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """upgrade의 정확한 역순으로 인덱스와 테이블을 제거한다."""
+
     op.drop_index("ix_messages_conversation_created", table_name="messages")
     op.drop_table("messages")
     op.drop_table("conversations")
