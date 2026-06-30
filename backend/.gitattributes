@@ -1,0 +1,7 @@
+# Linux 컨테이너에서 실행되는 셸 스크립트는 반드시 LF를 유지한다.
+*.sh text eol=lf
+
+# 코드와 배포 설정도 플랫폼과 무관하게 LF로 저장한다.
+*.py text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf

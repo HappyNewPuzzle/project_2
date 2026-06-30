@@ -5,8 +5,8 @@
 
 ## 현재 단계
 
-6단계까지 구현되어 있습니다. 최근 대화 창 밖에서도 유지되는 사용자 장기 기억을
-전역 또는 캐릭터별로 저장하고 채팅 문맥에 포함합니다.
+7단계까지 구현되어 있습니다. Docker Compose로 API와 PostgreSQL을 함께 실행하고,
+health check·구조화 로그·요청 ID·기본 rate limit을 제공합니다.
 
 ```text
 backend/
@@ -43,6 +43,9 @@ backend/
 │     └─ memory_service.py
 ├─ alembic/versions/
 ├─ alembic.ini
+├─ docker/entrypoint.sh
+├─ Dockerfile
+├─ compose.yaml
 ├─ tests/
 │  ├─ test_characters.py
 │  ├─ test_chat.py
@@ -58,6 +61,7 @@ backend/
 - `CharacterService`: 캐릭터 CRUD와 캐릭터 프롬프트 구성
 - `ChatService`: 메시지 저장, 최근 문맥 조회, LLM 호출 순서 조정
 - `MemoryService`: 사용자 장기 기억 CRUD와 캐릭터 범위 검증
+- middleware: 요청 ID 전파와 구조화 접근 로그
 - repository: SQLAlchemy 조회 및 추가
 - `LLMProvider`: `generate()`와 `stream()` provider 경계
 
@@ -97,6 +101,51 @@ uvicorn app.main:app --reload
 ```
 
 API 문서는 `http://127.0.0.1:8000/docs`에서 확인할 수 있습니다.
+
+## Docker Compose 실행
+
+프로젝트의 `backend` 디렉터리에서 실행합니다.
+
+```powershell
+Copy-Item .env.example .env
+docker compose up --build
+```
+
+Compose는 PostgreSQL healthcheck가 통과한 뒤 API를 시작합니다. API entrypoint는
+`alembic upgrade head` 성공 후 uvicorn을 실행합니다.
+
+```powershell
+docker compose ps
+docker compose logs -f api
+docker compose down
+```
+
+DB 데이터는 `postgres_data` named volume에 유지됩니다. 데이터까지 제거하려면
+그 의미를 확인한 뒤 명시적으로 `docker compose down -v`를 사용해야 합니다.
+
+단일 Compose 인스턴스에서는 entrypoint migration이 편리하지만, 여러 API replica를
+동시에 배포하는 운영 환경에서는 migration을 별도의 1회성 release job으로 분리해야
+합니다.
+
+## Health check와 로그
+
+```text
+GET /health/live   프로세스가 HTTP를 처리할 수 있는지 확인
+GET /health/ready  PostgreSQL SELECT 1까지 가능한지 확인
+```
+
+모든 응답에는 `X-Request-ID`가 포함됩니다. 요청 헤더에 같은 값을 보내면 그대로
+전파하고, 없으면 서버가 UUID를 생성합니다. `LOG_JSON=true`일 때 로그는 timestamp,
+level, logger, message, request_id, HTTP 처리 시간 등을 한 줄 JSON으로 출력합니다.
+
+## Rate limit
+
+- 회원가입/로그인: IP별 `AUTH_RATE_LIMIT_PER_MINUTE`
+- 채팅/스트리밍: 사용자 UUID별 `CHAT_RATE_LIMIT_PER_MINUTE`
+- 초과 응답: HTTP 429와 `Retry-After` 헤더
+
+현재 제한기는 단일 프로세스 메모리에 저장됩니다. 여러 worker나 여러 컨테이너에서는
+상태를 공유하지 않으므로 운영 확장 시 Redis 기반 제한기로 교체해야 합니다.
 
 ## 테스트
 
@@ -269,7 +318,7 @@ pytest
 4. 캐릭터: 캐릭터 CRUD, 시스템 프롬프트, 최근 대화 조립 (완료)
 5. 인증: Argon2 비밀번호 해시, JWT, 사용자별 리소스 권한 (완료)
 6. 장기 기억: memory CRUD, 중요도 조회, 캐릭터별 문맥 주입 (완료)
-7. 운영 준비: Docker, 구조화 로그, 관측성, rate limit, 테스트와 배포 자동화
+7. 운영 준비: Docker, health check, 구조화 로그, rate limit (완료)
 
 ## 저장 동작
 
@@ -285,7 +334,7 @@ LLM 호출이 실패해도 사용자 메시지는 남습니다. 스트리밍 도
 
 ## 다음 단계에서 개선할 점
 
-- Docker와 Docker Compose 기반 실행 환경
-- PostgreSQL 컨테이너와 migration 자동 적용
-- 구조화 로그, health check, rate limit
+- Redis 기반 분산 rate limit
+- CI에서 pytest·migration·Docker build 자동 검증
+- OpenTelemetry metrics와 tracing
 - 장기 기억 자동 추출과 pgvector 검색

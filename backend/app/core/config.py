@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     # API 문서와 로그에 표시되는 애플리케이션 기본 정보다.
     app_name: str = "AI Character Chat API"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    # 컨테이너 수집기가 파싱하기 쉬운 한 줄 JSON 로그 사용 여부다.
+    log_json: bool = True
+    auth_rate_limit_per_minute: int = Field(default=10, ge=1, le=10_000)
+    chat_rate_limit_per_minute: int = Field(default=30, ge=1, le=10_000)
 
     # SQLAlchemy async 엔진은 asyncpg 드라이버가 포함된 URL을 사용한다.
     database_url: str = (

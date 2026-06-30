@@ -2,12 +2,13 @@
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.rate_limit import get_rate_limiter
 from app.core.security import InvalidAccessTokenError, decode_access_token
 from app.db.models import User
 from app.db.session import get_db_session
@@ -73,10 +74,56 @@ async def get_current_user(
 CurrentUserDependency = Annotated[User, Depends(get_current_user)]
 
 
+def _enforce_rate_limit(key: str, *, limit: int) -> None:
+    """공통 제한기를 호출하고 초과 요청을 HTTP 429로 변환한다."""
+
+    result = get_rate_limiter().check(key, limit=limit)
+    if not result.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many requests.",
+            headers={"Retry-After": str(result.retry_after_seconds)},
+        )
+
+
+def enforce_auth_rate_limit(request: Request) -> None:
+    """회원가입·로그인을 클라이언트 IP 기준으로 제한한다."""
+
+    settings = get_settings()
+    client_ip = request.client.host if request.client else "unknown"
+    _enforce_rate_limit(
+        f"auth:{client_ip}",
+        limit=settings.auth_rate_limit_per_minute,
+    )
+
+
+AuthRateLimitDependency = Annotated[
+    None,
+    Depends(enforce_auth_rate_limit),
+]
+
+
+def enforce_chat_rate_limit(current_user: CurrentUserDependency) -> None:
+    """LLM 비용이 발생하는 채팅을 현재 사용자 UUID 기준으로 제한한다."""
+
+    settings = get_settings()
+    _enforce_rate_limit(
+        f"chat:{current_user.id}",
+        limit=settings.chat_rate_limit_per_minute,
+    )
+
+
+ChatRateLimitDependency = Annotated[
+    None,
+    Depends(enforce_chat_rate_limit),
+]
+
+
 def get_chat_service(
     session: SessionDependency,
     llm: LLMDependency,
     current_user: CurrentUserDependency,
+    _rate_limit: ChatRateLimitDependency,
 ) -> ChatService:
     """한 DB 세션과 LLM provider를 묶어 요청 전용 ChatService를 만든다."""
 

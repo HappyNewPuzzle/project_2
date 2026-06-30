@@ -97,3 +97,29 @@ input:
 
 사용자가 작성한 기억을 `instructions`에 넣지 않는 이유는 사용자 데이터를
 애플리케이션 개발자 규칙과 같은 높은 권한으로 승격하지 않기 위해서입니다.
+
+## 운영 요청 경계
+
+```text
+Client
+  → RequestContextMiddleware
+      → X-Request-ID 생성/전파
+      → 처리 시간과 상태 코드 JSON 로그
+  → RateLimit Dependency
+  → Authentication Dependency
+  → Route / Service
+```
+
+`/health/live`는 DB 장애와 무관하게 프로세스 생존 여부를 확인합니다.
+`/health/ready`는 PostgreSQL `SELECT 1`까지 확인해 트래픽을 받을 준비가 됐는지
+판단합니다.
+
+Compose 시작 순서는 다음과 같습니다.
+
+```text
+PostgreSQL 시작
+  → pg_isready healthcheck 통과
+  → API container 시작
+  → alembic upgrade head
+  → uvicorn 시작
+```

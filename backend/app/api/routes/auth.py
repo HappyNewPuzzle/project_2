@@ -6,7 +6,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.api.dependencies import AuthServiceDependency, CurrentUserDependency
+from app.api.dependencies import (
+    AuthRateLimitDependency,
+    AuthServiceDependency,
+    CurrentUserDependency,
+)
 from app.schemas.user import TokenResponse, UserCreate, UserResponse
 from app.services.auth_service import (
     AuthPersistenceError,
@@ -27,6 +31,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def register(
     payload: UserCreate,
     service: AuthServiceDependency,
+    _rate_limit: AuthRateLimitDependency,
 ) -> UserResponse:
     """새 계정을 만들되 응답에는 비밀번호 해시를 포함하지 않는다."""
 
@@ -50,6 +55,7 @@ async def register(
 async def login(
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
     service: AuthServiceDependency,
+    _rate_limit: AuthRateLimitDependency,
 ) -> TokenResponse:
     """OAuth2 password form의 username 필드를 이메일로 사용해 JWT를 발급한다."""
 
