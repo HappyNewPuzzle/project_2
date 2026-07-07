@@ -123,3 +123,20 @@ PostgreSQL 시작
   → alembic upgrade head
   → uvicorn 시작
 ```
+
+## CI 검증 경계
+
+GitHub Actions는 운영 배포 대신 기본 품질 검증만 담당합니다.
+
+```text
+push 또는 pull request
+  → Python 3.12 설치
+  → requirements.txt 설치
+  → pytest -q
+  → docker build
+```
+
+현재 CI는 실제 외부 LLM이나 운영 DB에 접속하지 않습니다. 테스트는 provider와 repository
+경계를 가짜 객체로 바꾸어 빠르게 실행하고, Docker build는 이미지가 정상적으로 만들어지는지
+확인합니다. 실제 PostgreSQL service container와 migration 검증은 후속 운영 단계에서
+추가할 수 있습니다.
