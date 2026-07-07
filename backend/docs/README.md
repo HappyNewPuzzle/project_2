@@ -14,6 +14,7 @@
 7. [6단계: 장기 기억](step-06-long-term-memory.md)
 8. [7단계: 운영과 Docker](step-07-operations.md)
 9. [8단계: GitHub Actions CI](step-08-ci.md)
+10. [9단계: CI migration 검증](step-09-migration-ci.md)
 
 각 문서를 읽은 뒤 문서에 링크된 실제 파일을 나란히 열어 보는 것을 권장합니다.
 라우터에서 시작해 서비스, repository, DB 모델 순으로 따라가면 요청 한 건의 흐름을

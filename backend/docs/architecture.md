@@ -133,10 +133,12 @@ push 또는 pull request
   → Python 3.12 설치
   → requirements.txt 설치
   → pytest -q
+  → PostgreSQL service container 시작
+  → alembic upgrade head
   → docker build
 ```
 
 현재 CI는 실제 외부 LLM이나 운영 DB에 접속하지 않습니다. 테스트는 provider와 repository
-경계를 가짜 객체로 바꾸어 빠르게 실행하고, Docker build는 이미지가 정상적으로 만들어지는지
-확인합니다. 실제 PostgreSQL service container와 migration 검증은 후속 운영 단계에서
-추가할 수 있습니다.
+경계를 가짜 객체로 바꾸어 빠르게 실행합니다. migration job은 GitHub Actions의 임시
+PostgreSQL service container에만 접속해 `alembic upgrade head`를 검증합니다. Docker
+build는 마지막에 이미지가 정상적으로 만들어지는지 확인합니다.

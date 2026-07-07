@@ -5,9 +5,9 @@
 
 ## 현재 단계
 
-8단계까지 구현되어 있습니다. Docker Compose로 API와 PostgreSQL을 함께 실행하고,
+9단계까지 구현되어 있습니다. Docker Compose로 API와 PostgreSQL을 함께 실행하고,
 health check·구조화 로그·요청 ID·기본 rate limit을 제공합니다. 또한 GitHub Actions로
-push/PR마다 pytest와 Docker build를 자동 검증합니다.
+push/PR마다 pytest, PostgreSQL migration, Docker build를 자동 검증합니다.
 
 ```text
 backend/
@@ -69,7 +69,7 @@ backend/
 - middleware: 요청 ID 전파와 구조화 접근 로그
 - repository: SQLAlchemy 조회 및 추가
 - `LLMProvider`: `generate()`와 `stream()` provider 경계
-- GitHub Actions: push/PR 시 테스트와 Docker 빌드 자동 검증
+- GitHub Actions: push/PR 시 테스트, Alembic migration, Docker 빌드 자동 검증
 
 현재 DB 모델은 `users`, `characters`, `conversations`, `messages`, `memories`를
 포함합니다.
@@ -316,8 +316,9 @@ pytest
 라우터 테스트에서는 FastAPI 의존성을 가짜 서비스로 바꾸므로 API 비용과 DB 연결이
 발생하지 않습니다. 보안 유틸리티 테스트는 실제 Argon2 해시와 JWT 왕복을 확인합니다.
 
-GitHub에 push하면 같은 테스트와 Docker build가 GitHub Actions에서도 자동으로 실행됩니다.
-Actions 탭에서 `Backend CI` 워크플로 결과를 확인할 수 있습니다.
+GitHub에 push하면 같은 테스트, PostgreSQL service container 기반 migration 검증,
+Docker build가 GitHub Actions에서도 자동으로 실행됩니다. Actions 탭에서 `Backend CI`
+워크플로 결과를 확인할 수 있습니다.
 
 ## 전체 로드맵
 
@@ -329,6 +330,7 @@ Actions 탭에서 `Backend CI` 워크플로 결과를 확인할 수 있습니다
 6. 장기 기억: memory CRUD, 중요도 조회, 캐릭터별 문맥 주입 (완료)
 7. 운영 준비: Docker, health check, 구조화 로그, rate limit (완료)
 8. CI 자동 검증: GitHub Actions, pytest, Docker build (완료)
+9. Migration CI: PostgreSQL service container, Alembic upgrade 검증 (완료)
 
 ## 저장 동작
 
@@ -345,6 +347,6 @@ LLM 호출이 실패해도 사용자 메시지는 남습니다. 스트리밍 도
 ## 다음 단계에서 개선할 점
 
 - Redis 기반 분산 rate limit
-- CI에서 PostgreSQL service container와 migration 자동 검증
+- CI에서 `/health/ready` 통합 테스트 자동 검증
 - OpenTelemetry metrics와 tracing
 - 장기 기억 자동 추출과 pgvector 검색

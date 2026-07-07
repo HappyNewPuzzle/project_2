@@ -68,7 +68,7 @@ checkout
 테스트용 환경 변수도 workflow 안에 명시했습니다.
 
 ```yaml
-JWT_SECRET_KEY: ci-test-secret-key-change-me
+JWT_SECRET_KEY: ci-test-secret-key-change-me-please-keep-long
 DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/character_chat
 OPENAI_API_KEY: ""
 LOG_JSON: "false"
