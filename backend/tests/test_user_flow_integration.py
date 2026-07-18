@@ -13,7 +13,7 @@ import pytest
 from sqlalchemy import select
 
 from app.db.models import Message, MessageRole
-from app.db.session import get_session_factory
+from app.db.session import get_engine, get_session_factory
 from app.schemas.character import CharacterCreate
 from app.schemas.memory import MemoryCreate
 from app.schemas.user import UserCreate
@@ -68,86 +68,93 @@ async def _run_user_flow() -> None:
     # CI에서 이미 migration이 적용된 PostgreSQL에 연결하는 세션 팩토리를 가져온다.
     session_factory = get_session_factory()
 
-    # 세션은 요청 한 건처럼 열고, 테스트가 끝나면 자동으로 닫히게 한다.
-    async with session_factory() as session:
-        # 매번 다른 이메일을 사용해 로컬에서 여러 번 실행해도 unique 충돌을 피한다.
-        email = f"flow-{uuid.uuid4().hex}@example.com"
-        password = "strong-password"
+    try:
+        # 세션은 요청 한 건처럼 열고, 테스트가 끝나면 자동으로 닫히게 한다.
+        async with session_factory() as session:
+            # 매번 다른 이메일을 사용해 로컬에서 여러 번 실행해도 unique 충돌을 피한다.
+            email = f"flow-{uuid.uuid4().hex}@example.com"
+            password = "strong-password"
 
-        # 1) 실제 AuthService로 회원가입하고 DB에 user가 저장되는지 확인한다.
-        user = await AuthService(session).register(
-            UserCreate(email=email, password=password),
-        )
-        assert user.email == email
-
-        # 2) 같은 계정으로 로그인해 JWT 문자열이 발급되는지 확인한다.
-        token = await AuthService(session).login(email, password)
-        assert token
-
-        # 3) 실제 CharacterService로 사용자 소유 캐릭터를 만든다.
-        character = await CharacterService(session, user_id=user.id).create(
-            CharacterCreate(
-                name="루나",
-                description="달빛 도서관의 사서",
-                personality="차분하고 호기심이 많다",
-                speaking_style="부드럽고 간결하게 말한다",
-                system_prompt="가끔 달과 책에 관한 비유를 사용한다",
-            ),
-        )
-        assert character.owner_id == user.id
-
-        # 4) 실제 MemoryService로 캐릭터에 연결된 장기 기억을 저장한다.
-        memory = await MemoryService(session, user_id=user.id).create(
-            MemoryCreate(
-                content="사용자는 천문학을 좋아한다",
-                character_id=character.id,
-                importance=5,
-            ),
-        )
-        assert memory.character_id == character.id
-
-        # 5) 실제 ChatService에 가짜 LLM을 주입해 저장과 문맥 조립을 검증한다.
-        llm = RecordingLLMProvider()
-        chat = ChatService(
-            session,
-            llm,
-            user_id=user.id,
-            history_limit=20,
-            memory_limit=10,
-        )
-        result = await chat.reply(
-            "안녕! 나를 기억해줘.",
-            conversation_id=None,
-            character_id=character.id,
-        )
-
-        # 6) 응답에는 새 대화방 ID, 캐릭터 ID, 가짜 LLM 답변이 포함되어야 한다.
-        assert result.character_id == character.id
-        assert result.reply == "안녕하세요, 저는 루나예요."
-
-        # 7) 캐릭터 instructions가 LLM 호출 경계까지 전달되는지 확인한다.
-        assert "You are roleplaying as 루나." in llm.instructions
-        assert "달빛 도서관의 사서" in llm.instructions
-
-        # 8) 장기 기억이 최근 대화 앞의 user 문맥으로 들어갔는지 확인한다.
-        assert llm.messages[0].role == "user"
-        assert "사용자는 천문학을 좋아한다" in llm.messages[0].content
-        assert llm.messages[-1].content == "안녕! 나를 기억해줘."
-
-        # 9) DB에는 사용자 메시지와 assistant 메시지가 모두 저장되어야 한다.
-        saved_messages = (
-            await session.scalars(
-                select(Message)
-                .where(Message.conversation_id == result.conversation_id)
-                .order_by(Message.created_at.asc())
+            # 1) 실제 AuthService로 회원가입하고 DB에 user가 저장되는지 확인한다.
+            user = await AuthService(session).register(
+                UserCreate(email=email, password=password),
             )
-        ).all()
-        assert [message.role for message in saved_messages] == [
-            MessageRole.USER.value,
-            MessageRole.ASSISTANT.value,
-        ]
-        assert saved_messages[0].content == "안녕! 나를 기억해줘."
-        assert saved_messages[1].content == "안녕하세요, 저는 루나예요."
+            assert user.email == email
+
+            # 2) 같은 계정으로 로그인해 JWT 문자열이 발급되는지 확인한다.
+            token = await AuthService(session).login(email, password)
+            assert token
+
+            # 3) 실제 CharacterService로 사용자 소유 캐릭터를 만든다.
+            character = await CharacterService(session, user_id=user.id).create(
+                CharacterCreate(
+                    name="루나",
+                    description="달빛 도서관의 사서",
+                    personality="차분하고 호기심이 많다",
+                    speaking_style="부드럽고 간결하게 말한다",
+                    system_prompt="가끔 달과 책에 관한 비유를 사용한다",
+                ),
+            )
+            assert character.owner_id == user.id
+
+            # 4) 실제 MemoryService로 캐릭터에 연결된 장기 기억을 저장한다.
+            memory = await MemoryService(session, user_id=user.id).create(
+                MemoryCreate(
+                    content="사용자는 천문학을 좋아한다",
+                    character_id=character.id,
+                    importance=5,
+                ),
+            )
+            assert memory.character_id == character.id
+
+            # 5) 실제 ChatService에 가짜 LLM을 주입해 저장과 문맥 조립을 검증한다.
+            llm = RecordingLLMProvider()
+            chat = ChatService(
+                session,
+                llm,
+                user_id=user.id,
+                history_limit=20,
+                memory_limit=10,
+            )
+            result = await chat.reply(
+                "안녕! 나를 기억해줘.",
+                conversation_id=None,
+                character_id=character.id,
+            )
+
+            # 6) 응답에는 새 대화방 ID, 캐릭터 ID, 가짜 LLM 답변이 포함되어야 한다.
+            assert result.character_id == character.id
+            assert result.reply == "안녕하세요, 저는 루나예요."
+
+            # 7) 캐릭터 instructions가 LLM 호출 경계까지 전달되는지 확인한다.
+            assert "You are roleplaying as 루나." in llm.instructions
+            assert "달빛 도서관의 사서" in llm.instructions
+
+            # 8) 장기 기억이 최근 대화 앞의 user 문맥으로 들어갔는지 확인한다.
+            assert llm.messages[0].role == "user"
+            assert "사용자는 천문학을 좋아한다" in llm.messages[0].content
+            assert llm.messages[-1].content == "안녕! 나를 기억해줘."
+
+            # 9) DB에는 사용자 메시지와 assistant 메시지가 모두 저장되어야 한다.
+            saved_messages = (
+                await session.scalars(
+                    select(Message)
+                    .where(Message.conversation_id == result.conversation_id)
+                    .order_by(Message.created_at.asc())
+                )
+            ).all()
+            assert [message.role for message in saved_messages] == [
+                MessageRole.USER.value,
+                MessageRole.ASSISTANT.value,
+            ]
+            assert saved_messages[0].content == "안녕! 나를 기억해줘."
+            assert saved_messages[1].content == "안녕하세요, 저는 루나예요."
+    finally:
+        # asyncpg 연결은 이벤트 루프에 묶이므로 테스트 종료 전에 풀을 명시적으로 닫는다.
+        await get_engine().dispose()
+        # 다음 통합 테스트가 새 이벤트 루프에서 새 엔진을 만들 수 있게 캐시를 비운다.
+        get_session_factory.cache_clear()
+        get_engine.cache_clear()
 
 
 def test_register_login_character_memory_chat_flow_with_postgres() -> None:

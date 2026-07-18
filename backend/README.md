@@ -5,7 +5,7 @@
 
 ## 현재 단계
 
-10단계까지 구현되어 있습니다. Docker Compose로 API와 PostgreSQL을 함께 실행하고,
+11단계까지 구현되어 있습니다. Docker Compose로 API와 PostgreSQL을 함께 실행하고,
 health check·구조화 로그·요청 ID·기본 rate limit을 제공합니다. 또한 GitHub Actions로
 push/PR마다 pytest, PostgreSQL migration, 사용자 흐름 통합 테스트, Docker build를 자동
 검증합니다.
@@ -57,7 +57,8 @@ backend/
 │  ├─ test_memories.py
 │  ├─ test_rate_limit.py
 │  ├─ test_security.py
-│  └─ test_user_flow_integration.py
+│  ├─ test_user_flow_integration.py
+│  └─ test_user_isolation_integration.py
 ├─ requirements.txt
 └─ .env.example
 
@@ -78,6 +79,7 @@ backend/
 - `LLMProvider`: `generate()`와 `stream()` provider 경계
 - GitHub Actions: push/PR 시 테스트, Alembic migration, Docker 빌드 자동 검증
 - 통합 테스트: 실제 PostgreSQL 위에서 회원가입부터 채팅 저장까지 검증
+- 권한 격리 테스트: 사용자별 캐릭터·기억·대화 접근 제한 검증
 
 현재 DB 모델은 `users`, `characters`, `conversations`, `messages`, `memories`를
 포함합니다.
@@ -340,6 +342,7 @@ Actions 탭에서 `Backend CI` 워크플로 결과를 확인할 수 있습니다
 8. CI 자동 검증: GitHub Actions, pytest, Docker build (완료)
 9. Migration CI: PostgreSQL service container, Alembic upgrade 검증 (완료)
 10. 통합 테스트: 실제 DB 기반 사용자 흐름 검증 (완료)
+11. 권한 격리: 사용자별 캐릭터·기억·대화 접근 제한 검증 (완료)
 
 ## 저장 동작
 

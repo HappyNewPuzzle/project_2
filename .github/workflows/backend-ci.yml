@@ -167,7 +167,7 @@ jobs:
         env:
           # 통합 테스트 파일이 skip되지 않도록 명시적으로 켭니다.
           RUN_DB_INTEGRATION: "1"
-        run: pytest tests/test_user_flow_integration.py -q
+        run: pytest tests/test_*_integration.py -q
 
   # Dockerfile이 실제로 빌드 가능한지 확인하는 작업입니다.
   docker-build:

@@ -16,6 +16,7 @@
 9. [8단계: GitHub Actions CI](step-08-ci.md)
 10. [9단계: CI migration 검증](step-09-migration-ci.md)
 11. [10단계: 사용자 흐름 통합 테스트](step-10-integration-tests.md)
+12. [11단계: 사용자 권한 격리 통합 테스트](step-11-user-isolation.md)
 
 각 문서를 읽은 뒤 문서에 링크된 실제 파일을 나란히 열어 보는 것을 권장합니다.
 라우터에서 시작해 서비스, repository, DB 모델 순으로 따라가면 요청 한 건의 흐름을
