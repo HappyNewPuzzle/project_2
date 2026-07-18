@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     )
     auth_rate_limit_per_minute: int = Field(default=10, ge=1, le=10_000)
     chat_rate_limit_per_minute: int = Field(default=30, ge=1, le=10_000)
+    # 값이 있으면 여러 API 프로세스가 공유하는 Redis 기반 rate limit을 사용한다.
+    redis_url: str | None = None
 
     # SQLAlchemy async 엔진은 asyncpg 드라이버가 포함된 URL을 사용한다.
     database_url: str = (

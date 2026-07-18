@@ -75,10 +75,10 @@ async def get_current_user(
 CurrentUserDependency = Annotated[User, Depends(get_current_user)]
 
 
-def _enforce_rate_limit(key: str, *, limit: int) -> None:
+async def _enforce_rate_limit(key: str, *, limit: int) -> None:
     """공통 제한기를 호출하고 초과 요청을 HTTP 429로 변환한다."""
 
-    result = get_rate_limiter().check(key, limit=limit)
+    result = await get_rate_limiter().acheck(key, limit=limit)
     if not result.allowed:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -87,12 +87,12 @@ def _enforce_rate_limit(key: str, *, limit: int) -> None:
         )
 
 
-def enforce_auth_rate_limit(request: Request) -> None:
+async def enforce_auth_rate_limit(request: Request) -> None:
     """회원가입·로그인을 클라이언트 IP 기준으로 제한한다."""
 
     settings = get_settings()
     client_ip = request.client.host if request.client else "unknown"
-    _enforce_rate_limit(
+    await _enforce_rate_limit(
         f"auth:{client_ip}",
         limit=settings.auth_rate_limit_per_minute,
     )
@@ -104,11 +104,11 @@ AuthRateLimitDependency = Annotated[
 ]
 
 
-def enforce_chat_rate_limit(current_user: CurrentUserDependency) -> None:
+async def enforce_chat_rate_limit(current_user: CurrentUserDependency) -> None:
     """LLM 비용이 발생하는 채팅을 현재 사용자 UUID 기준으로 제한한다."""
 
     settings = get_settings()
-    _enforce_rate_limit(
+    await _enforce_rate_limit(
         f"chat:{current_user.id}",
         limit=settings.chat_rate_limit_per_minute,
     )

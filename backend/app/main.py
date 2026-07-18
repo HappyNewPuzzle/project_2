@@ -15,6 +15,7 @@ from app.api.routes.memories import router as memories_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
+from app.core.rate_limit import close_rate_limiter
 from app.db.session import get_engine
 
 
@@ -27,6 +28,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """
 
     yield
+    await close_rate_limiter()
     await get_engine().dispose()
 
 

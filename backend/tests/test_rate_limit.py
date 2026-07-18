@@ -1,6 +1,7 @@
 """인메모리 sliding-window rate limiter의 경계 동작을 검증한다."""
 
-from app.core.rate_limit import InMemoryRateLimiter
+from app.core.config import get_settings
+from app.core.rate_limit import InMemoryRateLimiter, RedisRateLimiter, get_rate_limiter
 
 
 class FakeClock:
@@ -38,3 +39,30 @@ def test_rate_limits_are_isolated_by_key() -> None:
     assert limiter.check("user:1", limit=1).allowed
     assert not limiter.check("user:1", limit=1).allowed
     assert limiter.check("user:2", limit=1).allowed
+
+
+def test_rate_limiter_uses_memory_without_redis_url(monkeypatch) -> None:
+    """REDIS_URL이 없으면 기존 단일 프로세스 limiter를 선택한다."""
+
+    get_settings.cache_clear()
+    get_rate_limiter.cache_clear()
+    monkeypatch.delenv("REDIS_URL", raising=False)
+
+    assert isinstance(get_rate_limiter(), InMemoryRateLimiter)
+
+    get_settings.cache_clear()
+    get_rate_limiter.cache_clear()
+
+
+def test_rate_limiter_uses_redis_when_url_is_configured(monkeypatch) -> None:
+    """REDIS_URL이 있으면 Redis 기반 limiter를 선택한다."""
+
+    get_settings.cache_clear()
+    get_rate_limiter.cache_clear()
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+
+    limiter = get_rate_limiter()
+    assert isinstance(limiter, RedisRateLimiter)
+
+    get_settings.cache_clear()
+    get_rate_limiter.cache_clear()
