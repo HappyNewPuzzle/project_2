@@ -134,6 +134,8 @@ def get_chat_service(
         user_id=current_user.id,
         history_limit=get_settings().chat_history_limit,
         memory_limit=get_settings().chat_memory_limit,
+        auto_memory_enabled=get_settings().auto_memory_enabled,
+        auto_memory_max_items=get_settings().auto_memory_max_items,
     )
 
 

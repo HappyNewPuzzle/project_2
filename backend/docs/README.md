@@ -24,6 +24,7 @@
 17. [16단계: 대화방 목록과 메시지 조회 API](step-16-conversations-api.md)
 18. [17단계: 프론트엔드 대화 목록 연결](step-17-frontend-conversations.md)
 19. [18단계: Redis 기반 rate limit 준비](step-18-redis-rate-limit.md)
+20. [19단계: 장기 기억 자동 추출 구조](step-19-auto-memory-extraction.md)
 
 각 문서를 읽은 뒤 문서에 링크된 실제 파일을 나란히 열어 보는 것을 권장합니다.
 라우터에서 시작해 서비스, repository, DB 모델 순으로 따라가면 요청 한 건의 흐름을

@@ -1,5 +1,6 @@
 """채팅 한 턴의 DB 저장, 문맥 구성, LLM 호출 순서를 조정한다."""
 
+import logging
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import aclosing
@@ -18,6 +19,10 @@ from app.services.character_service import (
     build_character_instructions,
 )
 from app.services.llm_service import LLMMessage, LLMProvider
+from app.services.memory_extraction_service import MemoryExtractionService
+
+
+logger = logging.getLogger(__name__)
 
 
 class ConversationNotFoundError(LookupError):
@@ -62,12 +67,16 @@ class ChatService:
         user_id: uuid.UUID,
         history_limit: int,
         memory_limit: int,
+        auto_memory_enabled: bool = False,
+        auto_memory_max_items: int = 3,
     ) -> None:
         self._session = session
         self._llm = llm
         self._user_id = user_id
         self._history_limit = history_limit
         self._memory_limit = memory_limit
+        self._auto_memory_enabled = auto_memory_enabled
+        self._auto_memory_max_items = auto_memory_max_items
         self._characters = CharacterRepository(session)
         self._conversations = ConversationRepository(session)
         self._messages = MessageRepository(session)
@@ -210,6 +219,11 @@ class ChatService:
             instructions=turn.instructions,
         )
         await self.complete_turn(turn.conversation_id, reply)
+        await self._extract_memories_if_enabled(
+            user_message=message,
+            assistant_reply=reply,
+            character_id=turn.character_id,
+        )
         return ChatResult(
             conversation_id=turn.conversation_id,
             character_id=turn.character_id,
@@ -236,4 +250,38 @@ class ChatService:
                 yield delta
 
         # 정상적으로 끝난 경우에만 조각을 합쳐 assistant 메시지로 저장한다.
-        await self.complete_turn(turn.conversation_id, "".join(chunks))
+        reply = "".join(chunks)
+        await self.complete_turn(turn.conversation_id, reply)
+        user_message = turn.messages[-1].content if turn.messages else ""
+        await self._extract_memories_if_enabled(
+            user_message=user_message,
+            assistant_reply=reply,
+            character_id=turn.character_id,
+        )
+
+    async def _extract_memories_if_enabled(
+        self,
+        *,
+        user_message: str,
+        assistant_reply: str,
+        character_id: uuid.UUID,
+    ) -> None:
+        """옵션이 켜졌을 때만 장기 기억 후보를 추출하되 채팅 성공을 방해하지 않는다."""
+
+        if not self._auto_memory_enabled:
+            return
+        try:
+            saved_count = await MemoryExtractionService(
+                self._session,
+                self._llm,
+                user_id=self._user_id,
+                max_items=self._auto_memory_max_items,
+            ).extract_and_store(
+                user_message=user_message,
+                assistant_reply=assistant_reply,
+                character_id=character_id,
+            )
+            if saved_count:
+                logger.info("Stored %s extracted memories", saved_count)
+        except Exception:
+            logger.exception("Automatic memory extraction failed")

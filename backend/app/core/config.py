@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     chat_history_limit: int = Field(default=20, ge=1, le=100)
     # 중요도 순으로 가져올 활성 장기 기억의 최대 개수다.
     chat_memory_limit: int = Field(default=10, ge=0, le=50)
+    # true이면 채팅 완료 후 LLM으로 장기 기억 후보를 추출해 저장한다.
+    auto_memory_enabled: bool = False
+    auto_memory_max_items: int = Field(default=3, ge=1, le=10)
 
     # API 키가 없어도 앱과 문서는 실행되며, 실제 채팅 요청에서 명확한 오류를 낸다.
     openai_api_key: str | None = None
