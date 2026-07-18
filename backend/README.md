@@ -5,7 +5,7 @@
 
 ## 현재 단계
 
-19단계까지 구현되어 있습니다. Docker Compose로 API와 PostgreSQL을 함께 실행하고,
+20단계까지 구현되어 있습니다. Docker Compose로 API와 PostgreSQL을 함께 실행하고,
 health check·구조화 로그·요청 ID·기본 rate limit을 제공합니다. 또한 GitHub Actions로
 push/PR마다 pytest, PostgreSQL migration, 사용자 흐름 통합 테스트, Docker build를 자동
 검증합니다. 브라우저에서 API를 손으로 확인할 수 있는 최소 정적 프론트엔드도 포함합니다.
@@ -98,6 +98,7 @@ frontend/
 - 프론트엔드 대화 목록: 이전 대화 열기와 현재 대화 삭제
 - Redis rate limit: 여러 API 프로세스가 공유할 수 있는 제한기 준비
 - 자동 기억 추출: 채팅 완료 후 LLM 기반 memory 후보 저장 구조
+- embedding 준비: memory embedding 저장 테이블과 provider 경계
 
 현재 DB 모델은 `users`, `characters`, `conversations`, `messages`, `memories`를
 포함합니다.
@@ -375,6 +376,7 @@ python scripts/check_deploy_env.py --production
 17. 프론트엔드 대화 목록: 저장된 대화 열기와 삭제 (완료)
 18. Redis rate limit: REDIS_URL 기반 분산 제한기 선택 (완료)
 19. 자동 기억 추출: 채팅 완료 후 장기 기억 후보 저장 구조 (완료)
+20. embedding 준비: pgvector 전환 전 저장 경계와 cosine 검색 기반 (완료)
 
 ## 저장 동작
 

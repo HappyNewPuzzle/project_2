@@ -269,3 +269,37 @@ class Memory(Base):
 
     user: Mapped[User] = relationship(back_populates="memories")
     character: Mapped[Character | None] = relationship(back_populates="memories")
+    embedding: Mapped["MemoryEmbedding | None"] = relationship(
+        back_populates="memory",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class MemoryEmbedding(Base):
+    """pgvector 전환 전 embedding 저장 경계를 제공하는 테이블."""
+
+    __tablename__ = "memory_embeddings"
+
+    memory_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("memories.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    provider: Mapped[str] = mapped_column(String(100), nullable=False)
+    dimensions: Mapped[int] = mapped_column(Integer, nullable=False)
+    # 지금은 JSON 문자열로 저장하고, 이후 pgvector Vector 컬럼으로 교체할 수 있다.
+    vector_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    memory: Mapped[Memory] = relationship(back_populates="embedding")
