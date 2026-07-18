@@ -135,10 +135,12 @@ push 또는 pull request
   → pytest -q
   → PostgreSQL service container 시작
   → alembic upgrade head
+  → 사용자 흐름 통합 테스트
   → docker build
 ```
 
 현재 CI는 실제 외부 LLM이나 운영 DB에 접속하지 않습니다. 테스트는 provider와 repository
 경계를 가짜 객체로 바꾸어 빠르게 실행합니다. migration job은 GitHub Actions의 임시
-PostgreSQL service container에만 접속해 `alembic upgrade head`를 검증합니다. Docker
-build는 마지막에 이미지가 정상적으로 만들어지는지 확인합니다.
+PostgreSQL service container에만 접속해 `alembic upgrade head`를 검증한 뒤, 같은 DB에서
+회원가입·로그인·캐릭터·기억·채팅 저장 흐름을 확인합니다. Docker build는 마지막에 이미지가
+정상적으로 만들어지는지 확인합니다.
