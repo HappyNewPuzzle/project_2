@@ -22,6 +22,7 @@
 15. [14단계: 최소 프론트엔드 채팅 UI](step-14-minimal-frontend.md)
 16. [15단계: 배포 전 환경 점검](step-15-deployment-readiness.md)
 17. [16단계: 대화방 목록과 메시지 조회 API](step-16-conversations-api.md)
+18. [17단계: 프론트엔드 대화 목록 연결](step-17-frontend-conversations.md)
 
 각 문서를 읽은 뒤 문서에 링크된 실제 파일을 나란히 열어 보는 것을 권장합니다.
 라우터에서 시작해 서비스, repository, DB 모델 순으로 따라가면 요청 한 건의 흐름을

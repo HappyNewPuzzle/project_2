@@ -107,6 +107,33 @@
         background: #9ca3af;
       }
 
+      .conversation-list {
+        display: grid;
+        gap: 8px;
+        max-height: 220px;
+        overflow-y: auto;
+      }
+
+      .conversation-item {
+        border: 1px solid #4b5563;
+        border-radius: 12px;
+        background: #111827;
+        color: #e5e7eb;
+        display: grid;
+        gap: 4px;
+        padding: 10px;
+        text-align: left;
+      }
+
+      .conversation-item.active {
+        border-color: #60a5fa;
+      }
+
+      .conversation-meta {
+        color: #9ca3af;
+        font-size: 12px;
+      }
+
       #messages {
         display: grid;
         gap: 10px;
@@ -185,11 +212,18 @@
             <button id="saveMemoryButton" class="secondary">기억 저장</button>
           </div>
 
+          <h2>3. 대화 목록</h2>
+          <div class="actions">
+            <button id="loadConversationsButton" class="secondary">목록 새로고침</button>
+            <button id="deleteConversationButton" class="secondary">현재 대화 삭제</button>
+          </div>
+          <div id="conversationList" class="conversation-list"></div>
+
           <p id="status"></p>
         </section>
 
         <section>
-          <h2>3. 스트리밍 채팅</h2>
+          <h2>4. 스트리밍 채팅</h2>
           <div id="messages"></div>
           <label>
             메시지
@@ -219,6 +253,9 @@
         loginButton: document.querySelector("#loginButton"),
         createCharacterButton: document.querySelector("#createCharacterButton"),
         saveMemoryButton: document.querySelector("#saveMemoryButton"),
+        loadConversationsButton: document.querySelector("#loadConversationsButton"),
+        deleteConversationButton: document.querySelector("#deleteConversationButton"),
+        conversationList: document.querySelector("#conversationList"),
         sendButton: document.querySelector("#sendButton"),
         resetConversationButton: document.querySelector("#resetConversationButton"),
       };
@@ -256,6 +293,14 @@
         elements.messages.appendChild(node);
         elements.messages.scrollTop = elements.messages.scrollHeight;
         return node;
+      }
+
+      // 서버에서 읽어 온 메시지 배열로 채팅 화면을 다시 그립니다.
+      function renderMessages(messages) {
+        elements.messages.innerHTML = "";
+        for (const message of messages) {
+          addMessage(message.role, message.content);
+        }
       }
 
       // JSON API 응답이 실패했을 때 사람이 읽기 쉬운 오류를 만듭니다.
@@ -332,6 +377,68 @@
         setStatus("장기 기억 저장 완료.");
       }
 
+      // 대화 목록을 서버에서 읽어와 버튼 목록으로 표시합니다.
+      async function loadConversations() {
+        const response = await fetch(`${apiBaseUrl()}/conversations`, {
+          headers: authHeaders(),
+        });
+        await ensureOk(response);
+        const conversations = await response.json();
+        elements.conversationList.innerHTML = "";
+
+        for (const conversation of conversations) {
+          const button = document.createElement("button");
+          button.className = "conversation-item";
+          if (conversation.id === state.conversationId) {
+            button.classList.add("active");
+          }
+          button.innerHTML = `
+            <span>${conversation.id}</span>
+            <span class="conversation-meta">updated: ${conversation.updated_at}</span>
+          `;
+          button.addEventListener("click", () => openConversation(conversation));
+          elements.conversationList.appendChild(button);
+        }
+        setStatus(`대화 ${conversations.length}개를 불러왔습니다.`);
+      }
+
+      // 선택한 대화방의 메시지를 읽어 화면에 복원합니다.
+      async function openConversation(conversation) {
+        const response = await fetch(
+          `${apiBaseUrl()}/conversations/${conversation.id}/messages`,
+          { headers: authHeaders() },
+        );
+        await ensureOk(response);
+        const messages = await response.json();
+        state.conversationId = conversation.id;
+        state.characterId = conversation.character_id;
+        localStorage.setItem("conversationId", state.conversationId);
+        localStorage.setItem("characterId", state.characterId);
+        renderMessages(messages);
+        await loadConversations();
+        setStatus("이전 대화를 열었습니다.");
+      }
+
+      // 현재 선택된 대화방을 삭제하고 화면 상태를 새 대화로 초기화합니다.
+      async function deleteCurrentConversation() {
+        if (!state.conversationId) {
+          setStatus("삭제할 현재 대화가 없습니다.");
+          return;
+        }
+        const response = await fetch(
+          `${apiBaseUrl()}/conversations/${state.conversationId}`,
+          {
+            method: "DELETE",
+            headers: authHeaders(),
+          },
+        );
+        await ensureOk(response);
+        elements.messages.innerHTML = "";
+        resetConversation();
+        await loadConversations();
+        setStatus("현재 대화를 삭제했습니다.");
+      }
+
       // SSE 한 이벤트 블록을 event 이름과 data 문자열로 나눕니다.
       function parseSseBlock(block) {
         const eventLine = block.split("\n").find((line) => line.startsWith("event: "));
@@ -400,6 +507,7 @@
             }
             if (event.event === "done") {
               setStatus("응답 완료.");
+              await loadConversations();
             }
           }
         }
@@ -428,6 +536,8 @@
       bind(elements.loginButton, login);
       bind(elements.createCharacterButton, createCharacter);
       bind(elements.saveMemoryButton, saveMemory);
+      bind(elements.loadConversationsButton, loadConversations);
+      bind(elements.deleteConversationButton, deleteCurrentConversation);
       bind(elements.sendButton, sendStreamingMessage);
       bind(elements.resetConversationButton, resetConversation);
 
