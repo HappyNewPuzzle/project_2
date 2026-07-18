@@ -82,6 +82,10 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
 
+      # 개발 허용 모드로 환경 설정 로딩과 점검 스크립트 문법을 확인합니다.
+      - name: Check deployment settings script
+        run: python scripts/check_deploy_env.py --allow-missing-openai --allow-dev-secret
+
       # pytest로 현재 테스트 스위트를 실행합니다.
       - name: Run tests
         run: pytest -q

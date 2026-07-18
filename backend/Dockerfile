@@ -19,6 +19,7 @@ RUN python -m pip install --upgrade pip \
 COPY alembic.ini .
 COPY alembic ./alembic
 COPY app ./app
+COPY scripts ./scripts
 COPY docker/entrypoint.sh ./docker/entrypoint.sh
 
 # 앱은 8000 포트만 사용하므로 root 권한이 필요 없다.

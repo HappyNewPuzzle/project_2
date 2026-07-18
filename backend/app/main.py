@@ -51,7 +51,7 @@ def create_app() -> FastAPI:
     # 개발용 정적 프론트엔드가 브라우저에서 백엔드 API를 호출할 수 있게 한다.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_allowed_origins,
+        allow_origins=settings.cors_origin_list,
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],

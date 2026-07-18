@@ -16,11 +16,9 @@ class Settings(BaseSettings):
     # 컨테이너 수집기가 파싱하기 쉬운 한 줄 JSON 로그 사용 여부다.
     log_json: bool = True
     # 브라우저 프론트엔드가 백엔드 API를 호출할 수 있도록 허용할 origin 목록이다.
-    cors_allowed_origins: list[str] = Field(
-        default_factory=lambda: [
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-        ],
+    # 환경변수 quoting을 단순하게 유지하려고 콤마로 구분된 문자열을 사용한다.
+    cors_allowed_origins: str = (
+        "http://localhost:5173,http://127.0.0.1:5173"
     )
     auth_rate_limit_per_minute: int = Field(default=10, ge=1, le=10_000)
     chat_rate_limit_per_minute: int = Field(default=30, ge=1, le=10_000)
@@ -62,6 +60,16 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        """콤마 구분 CORS origin 문자열을 FastAPI middleware용 list로 변환한다."""
+
+        return [
+            origin.strip()
+            for origin in self.cors_allowed_origins.split(",")
+            if origin.strip()
+        ]
 
 
 @lru_cache

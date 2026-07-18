@@ -20,6 +20,7 @@
 13. [12단계: 스트리밍 저장 정책 통합 테스트](step-12-streaming-persistence.md)
 14. [13단계: FastAPI HTTP 통합 테스트](step-13-api-integration.md)
 15. [14단계: 최소 프론트엔드 채팅 UI](step-14-minimal-frontend.md)
+16. [15단계: 배포 전 환경 점검](step-15-deployment-readiness.md)
 
 각 문서를 읽은 뒤 문서에 링크된 실제 파일을 나란히 열어 보는 것을 권장합니다.
 라우터에서 시작해 서비스, repository, DB 모델 순으로 따라가면 요청 한 건의 흐름을
@@ -36,3 +37,4 @@
 - `alembic`: DB 구조 변경 이력
 - `tests`: 외부 시스템 없이 각 계층의 계약 검증
 - `.github/workflows`: GitHub에 push/PR 될 때 자동 검증하는 CI 설정
+- `scripts`: 배포 전 환경 설정을 점검하는 운영 보조 도구
