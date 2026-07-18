@@ -19,6 +19,7 @@
 12. [11단계: 사용자 권한 격리 통합 테스트](step-11-user-isolation.md)
 13. [12단계: 스트리밍 저장 정책 통합 테스트](step-12-streaming-persistence.md)
 14. [13단계: FastAPI HTTP 통합 테스트](step-13-api-integration.md)
+15. [14단계: 최소 프론트엔드 채팅 UI](step-14-minimal-frontend.md)
 
 각 문서를 읽은 뒤 문서에 링크된 실제 파일을 나란히 열어 보는 것을 권장합니다.
 라우터에서 시작해 서비스, repository, DB 모델 순으로 따라가면 요청 한 건의 흐름을

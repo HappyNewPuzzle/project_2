@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.chat import router as chat_router
@@ -45,6 +46,15 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         version="0.6.0",
         lifespan=lifespan,
+    )
+
+    # 개발용 정적 프론트엔드가 브라우저에서 백엔드 API를 호출할 수 있게 한다.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_allowed_origins,
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     # 모든 HTTP 요청에 request ID와 접근 로그를 추가한다.

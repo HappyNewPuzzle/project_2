@@ -5,10 +5,10 @@
 
 ## 현재 단계
 
-13단계까지 구현되어 있습니다. Docker Compose로 API와 PostgreSQL을 함께 실행하고,
+14단계까지 구현되어 있습니다. Docker Compose로 API와 PostgreSQL을 함께 실행하고,
 health check·구조화 로그·요청 ID·기본 rate limit을 제공합니다. 또한 GitHub Actions로
 push/PR마다 pytest, PostgreSQL migration, 사용자 흐름 통합 테스트, Docker build를 자동
-검증합니다.
+검증합니다. 브라우저에서 API를 손으로 확인할 수 있는 최소 정적 프론트엔드도 포함합니다.
 
 ```text
 backend/
@@ -67,6 +67,10 @@ backend/
 .github/
 └─ workflows/
    └─ backend-ci.yml
+
+frontend/
+├─ index.html
+└─ README.md
 ```
 
 책임은 다음처럼 분리됩니다.
@@ -84,6 +88,7 @@ backend/
 - 권한 격리 테스트: 사용자별 캐릭터·기억·대화 접근 제한 검증
 - 스트리밍 저장 테스트: 정상 완료된 assistant 메시지만 DB 저장
 - HTTP 통합 테스트: FastAPI 라우터, JWT, DB 세션, health check 검증
+- 최소 프론트엔드: 브라우저에서 로그인, 캐릭터 생성, 스트리밍 채팅 확인
 
 현재 DB 모델은 `users`, `characters`, `conversations`, `messages`, `memories`를
 포함합니다.
@@ -349,6 +354,7 @@ Actions 탭에서 `Backend CI` 워크플로 결과를 확인할 수 있습니다
 11. 권한 격리: 사용자별 캐릭터·기억·대화 접근 제한 검증 (완료)
 12. 스트리밍 저장 정책: 성공/실패 스트림의 DB 기록 검증 (완료)
 13. HTTP 통합 테스트: FastAPI 라우터와 실제 DB 연결 검증 (완료)
+14. 최소 프론트엔드: 정적 HTML 기반 브라우저 채팅 UI (완료)
 
 ## 저장 동작
 
