@@ -142,11 +142,46 @@ async def _run_api_flow() -> None:
                 == chat_body["conversation_id"]
             )
 
-            # 8) health live는 DB와 무관하게 살아 있어야 한다.
+            # 8) 대화방 목록에서 방금 만든 대화방을 다시 찾을 수 있어야 한다.
+            conversations_response = await client.get(
+                "/conversations",
+                headers=headers,
+            )
+            assert conversations_response.status_code == 200
+            conversation_ids = {
+                conversation["id"]
+                for conversation in conversations_response.json()
+            }
+            assert chat_body["conversation_id"] in conversation_ids
+
+            # 9) 대화방 메시지 조회에서 user/assistant 기록을 확인한다.
+            messages_response = await client.get(
+                f"/conversations/{chat_body['conversation_id']}/messages",
+                headers=headers,
+            )
+            assert messages_response.status_code == 200
+            roles = [message["role"] for message in messages_response.json()]
+            assert roles == ["user", "assistant", "user", "assistant"]
+
+            # 10) 대화방 삭제 API가 메시지까지 함께 정리되도록 호출한다.
+            delete_response = await client.delete(
+                f"/conversations/{chat_body['conversation_id']}",
+                headers=headers,
+            )
+            assert delete_response.status_code == 204
+
+            # 11) 삭제된 대화방의 메시지는 더 이상 조회할 수 없어야 한다.
+            deleted_messages_response = await client.get(
+                f"/conversations/{chat_body['conversation_id']}/messages",
+                headers=headers,
+            )
+            assert deleted_messages_response.status_code == 404
+
+            # 12) health live는 DB와 무관하게 살아 있어야 한다.
             live_response = await client.get("/health/live")
             assert live_response.status_code == 200
 
-            # 9) health ready는 실제 PostgreSQL 연결까지 성공해야 한다.
+            # 13) health ready는 실제 PostgreSQL 연결까지 성공해야 한다.
             ready_response = await client.get("/health/ready")
             assert ready_response.status_code == 200
     finally:

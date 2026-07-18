@@ -5,7 +5,7 @@
 
 ## 현재 단계
 
-15단계까지 구현되어 있습니다. Docker Compose로 API와 PostgreSQL을 함께 실행하고,
+16단계까지 구현되어 있습니다. Docker Compose로 API와 PostgreSQL을 함께 실행하고,
 health check·구조화 로그·요청 ID·기본 rate limit을 제공합니다. 또한 GitHub Actions로
 push/PR마다 pytest, PostgreSQL migration, 사용자 흐름 통합 테스트, Docker build를 자동
 검증합니다. 브라우저에서 API를 손으로 확인할 수 있는 최소 정적 프론트엔드도 포함합니다.
@@ -18,6 +18,7 @@ backend/
 │  │  ├─ auth.py
 │  │  ├─ chat.py
 │  │  ├─ characters.py
+│  │  ├─ conversations.py
 │  │  └─ memories.py
 │  ├─ core/
 │  │  ├─ config.py
@@ -56,6 +57,7 @@ backend/
 │  ├─ test_characters.py
 │  ├─ test_chat.py
 │  ├─ test_chat_service.py
+│  ├─ test_conversations.py
 │  ├─ test_health.py
 │  ├─ test_memories.py
 │  ├─ test_rate_limit.py
@@ -92,6 +94,7 @@ frontend/
 - HTTP 통합 테스트: FastAPI 라우터, JWT, DB 세션, health check 검증
 - 최소 프론트엔드: 브라우저에서 로그인, 캐릭터 생성, 스트리밍 채팅 확인
 - 배포 점검 스크립트: 운영 전 위험한 기본 환경값 확인
+- 대화방 API: 저장된 대화 목록, 메시지 조회, 대화방 삭제
 
 현재 DB 모델은 `users`, `characters`, `conversations`, `messages`, `memories`를
 포함합니다.
@@ -365,6 +368,7 @@ python scripts/check_deploy_env.py --production
 13. HTTP 통합 테스트: FastAPI 라우터와 실제 DB 연결 검증 (완료)
 14. 최소 프론트엔드: 정적 HTML 기반 브라우저 채팅 UI (완료)
 15. 배포 준비: 환경 설정 점검 스크립트와 체크리스트 (완료)
+16. 대화방 API: 목록, 메시지 조회, 삭제 (완료)
 
 ## 저장 동작
 

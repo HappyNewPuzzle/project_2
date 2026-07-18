@@ -2,6 +2,7 @@
 
 import uuid
 
+from sqlalchemy import select
 from sqlalchemy import func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +19,24 @@ class ConversationRepository:
         """기본 키로 대화방을 조회하고 없으면 None을 반환한다."""
 
         return await self._session.get(Conversation, conversation_id)
+
+    async def list_for_user(
+        self,
+        user_id: uuid.UUID,
+        *,
+        offset: int,
+        limit: int,
+    ) -> list[Conversation]:
+        """현재 사용자의 대화방만 최근 수정순으로 조회한다."""
+
+        statement = (
+            select(Conversation)
+            .where(Conversation.user_id == user_id)
+            .order_by(Conversation.updated_at.desc(), Conversation.id)
+            .offset(offset)
+            .limit(limit)
+        )
+        return list((await self._session.scalars(statement)).all())
 
     async def create(
         self,
@@ -45,3 +64,8 @@ class ConversationRepository:
             .values(updated_at=func.now())
         )
         await self._session.execute(statement)
+
+    async def delete(self, conversation: Conversation) -> None:
+        """대화방 삭제 대상으로 표시한다. 소속 메시지는 ORM cascade로 함께 삭제된다."""
+
+        await self._session.delete(conversation)

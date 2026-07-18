@@ -16,6 +16,7 @@ from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
 from app.services.chat_service import ChatService
 from app.services.character_service import CharacterService
+from app.services.conversation_service import ConversationService
 from app.services.llm_service import LLMProvider, get_llm_provider
 from app.services.memory_service import MemoryService
 
@@ -164,3 +165,18 @@ def get_memory_service(
 
 
 MemoryServiceDependency = Annotated[MemoryService, Depends(get_memory_service)]
+
+
+def get_conversation_service(
+    session: SessionDependency,
+    current_user: CurrentUserDependency,
+) -> ConversationService:
+    """현재 사용자 범위로 제한된 대화방 조회 서비스를 만든다."""
+
+    return ConversationService(session, user_id=current_user.id)
+
+
+ConversationServiceDependency = Annotated[
+    ConversationService,
+    Depends(get_conversation_service),
+]

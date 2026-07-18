@@ -50,3 +50,21 @@ class MessageRepository:
         # LLM에는 실제 대화 순서대로 보내야 하므로 메모리에서 다시 뒤집는다.
         messages.reverse()
         return messages
+
+    async def list_for_conversation(
+        self,
+        conversation_id: uuid.UUID,
+        *,
+        offset: int,
+        limit: int,
+    ) -> list[Message]:
+        """대화방 화면에 표시할 메시지를 오래된 순서로 페이지 조회한다."""
+
+        statement = (
+            select(Message)
+            .where(Message.conversation_id == conversation_id)
+            .order_by(Message.created_at.asc(), Message.id)
+            .offset(offset)
+            .limit(limit)
+        )
+        return list((await self._session.scalars(statement)).all())
