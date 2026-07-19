@@ -65,7 +65,7 @@ jobs:
 
       # 프로젝트와 Dockerfile에서 사용하는 Python 3.12를 설치합니다.
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           # Dockerfile과 맞춰 테스트 Python 버전을 고정합니다.
           python-version: "3.12"
@@ -88,7 +88,7 @@ jobs:
 
       # pytest로 현재 테스트 스위트를 실행합니다.
       - name: Run tests
-        run: pytest -q
+        run: python -m pytest -q
 
   # Alembic migration이 깨지지 않았는지 실제 PostgreSQL에 적용해 보는 작업입니다.
   migration:
@@ -142,7 +142,7 @@ jobs:
 
       # Alembic을 실행할 Python 3.12를 설치합니다.
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           # Dockerfile과 같은 Python 버전으로 검증합니다.
           python-version: "3.12"
@@ -171,7 +171,7 @@ jobs:
         env:
           # 통합 테스트 파일이 skip되지 않도록 명시적으로 켭니다.
           RUN_DB_INTEGRATION: "1"
-        run: pytest tests/test_*_integration.py -q
+        run: python -m pytest tests/test_*_integration.py -q
 
   # Dockerfile이 실제로 빌드 가능한지 확인하는 작업입니다.
   docker-build:
