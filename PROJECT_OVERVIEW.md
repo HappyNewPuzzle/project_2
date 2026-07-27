@@ -28,7 +28,7 @@
 
 ## 현재 구현 상태
 
-현재는 20단계까지 구현되어 있습니다.
+현재는 21단계까지 구현되어 있습니다.
 
 ```text
 1단계  최소 채팅 API
@@ -51,6 +51,7 @@
 18단계 Redis 기반 rate limit 준비
 19단계 장기 기억 자동 추출 구조
 20단계 embedding / pgvector 검색 준비
+21단계 실제 OpenAI embedding provider
 ```
 
 ## 전체 폴더 구조
@@ -477,7 +478,7 @@ python scripts/check_deploy_env.py --allow-missing-openai --allow-dev-secret
 - 운영용 프론트엔드 구조
 - 대화방 제목 자동 생성
 - 캐릭터 이미지 / 프로필 기능
-- 실제 OpenAI embedding provider
+- pgvector 기반 DB similarity 검색
 - pgvector 확장 적용
 - memory 검색 API
 - 중복 memory 제거
@@ -494,7 +495,7 @@ python scripts/check_deploy_env.py --allow-missing-openai --allow-dev-secret
 다음에 이어서 진행한다면 추천 순서는 다음과 같습니다.
 
 ```text
-21단계: 실제 OpenAI embedding provider 추가
+21단계: 실제 OpenAI embedding provider 추가 (완료)
 22단계: pgvector 지원 PostgreSQL 이미지 전환
 23단계: memory 검색 API 추가
 24단계: 대화방 제목 자동 생성

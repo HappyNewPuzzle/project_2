@@ -38,8 +38,14 @@ class Settings(BaseSettings):
     # true이면 채팅 완료 후 LLM으로 장기 기억 후보를 추출해 저장한다.
     auto_memory_enabled: bool = False
     auto_memory_max_items: int = Field(default=3, ge=1, le=10)
+    # hashing은 로컬 개발과 테스트에서 외부 API 비용 없이 사용할 기본 provider다.
+    embedding_provider: Literal["hashing", "openai"] = "hashing"
     # pgvector 전환 전까지 테스트/개발용 hashing embedding 차원 수다.
     embedding_dimensions: int = Field(default=32, ge=8, le=4096)
+    # 실제 의미 기반 벡터가 필요할 때 사용할 OpenAI embedding 모델이다.
+    openai_embedding_model: str = "text-embedding-3-small"
+    # text-embedding-3 계열은 dimensions 매개변수로 벡터 길이를 줄일 수 있다.
+    openai_embedding_dimensions: int = Field(default=1536, ge=1, le=3072)
 
     # API 키가 없어도 앱과 문서는 실행되며, 실제 채팅 요청에서 명확한 오류를 낸다.
     openai_api_key: str | None = None
