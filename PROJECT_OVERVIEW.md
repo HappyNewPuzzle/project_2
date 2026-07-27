@@ -23,12 +23,12 @@
 - Redis 기반 rate limit 준비
 - Docker Compose 실행
 - GitHub Actions CI
-- 최소 프론트엔드
+- React + TypeScript 프론트엔드
 - embedding / pgvector 확장 준비
 
 ## 현재 구현 상태
 
-현재는 24단계까지 구현되어 있습니다.
+현재는 25단계까지 구현되어 있습니다.
 
 ```text
 1단계  최소 채팅 API
@@ -55,6 +55,7 @@
 22단계 pgvector 저장 구조와 HNSW index
 23단계 장기 기억 자동 embedding과 의미 검색 API
 24단계 대화방 제목 자동 생성과 프론트엔드 표시
+25단계 React + TypeScript/Vite 프론트엔드 구조화와 CI
 ```
 
 ## 전체 폴더 구조
@@ -339,7 +340,8 @@ Memory 1 ─── 0..1 MemoryEmbedding
 
 ## 프론트엔드
 
-프론트엔드는 현재 `frontend/index.html` 하나로 구성된 최소 정적 UI입니다.
+프론트엔드는 React 19 + TypeScript + Vite 기반 SPA입니다. 화면 컴포넌트,
+공통 상태, API client, SSE parser를 나눠 백엔드와 독립적으로 확장할 수 있습니다.
 
 지원 기능:
 
@@ -358,7 +360,8 @@ Memory 1 ─── 0..1 MemoryEmbedding
 
 ```powershell
 cd frontend
-python -m http.server 5173
+npm install
+npm run dev
 ```
 
 브라우저:
@@ -367,8 +370,8 @@ python -m http.server 5173
 http://127.0.0.1:5173
 ```
 
-운영용 프론트엔드는 아직 아닙니다. React/Next.js 같은 구조화된 프론트엔드는 다음 확장
-후보입니다.
+Vitest가 분할된 SSE chunk와 URL 처리를 검증하고 GitHub Actions가 테스트와 production
+build를 반복합니다. 토큰 저장과 상세 오류 UX는 아직 개발용 수준입니다.
 
 ## Docker Compose 실행
 
@@ -479,7 +482,7 @@ python scripts/check_deploy_env.py --allow-missing-openai --allow-dev-secret
 
 아직 구현되지 않았거나 후속 개선이 필요한 부분입니다.
 
-- 운영용 프론트엔드 구조
+- 운영용 토큰 저장·갱신과 상세 오류 UX
 - 캐릭터 이미지 / 프로필 기능
 - 중복 memory 제거
 - 자동 memory 저장 전 사용자 승인 UI
@@ -499,8 +502,9 @@ python scripts/check_deploy_env.py --allow-missing-openai --allow-dev-secret
 22단계: pgvector 지원 PostgreSQL 이미지 전환 (완료)
 23단계: memory 검색 API 추가 (완료)
 24단계: 대화방 제목 자동 생성 (완료)
-25단계: React 또는 Next.js 기반 프론트엔드 구조화
+25단계: React + TypeScript + Vite 기반 프론트엔드 구조화 (완료)
+26단계: 기존 캐릭터 목록 조회·선택 UI
 ```
 
-현재 상태는 “학습용 예제”를 넘어, 실제 서비스로 확장 가능한 백엔드 골격과 최소 UI,
+현재 상태는 “학습용 예제”를 넘어, 실제 서비스로 확장 가능한 백엔드 골격과 React UI,
 운영 전 점검 체계까지 갖춘 상태입니다.

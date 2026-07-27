@@ -119,7 +119,21 @@ ID 조건은 항상 SQL에 포함해 다른 사용자의 벡터가 결과 후보
 새 대화방은 첫 사용자 메시지의 공백을 정리하고 최대 50자로 줄인 제목을 함께
 저장합니다. 제목 생성은 LLM과 분리되어 채팅 시작의 외부 API 호출 횟수를 늘리지
 않습니다. 대화방 목록은 최근 활동순으로 `id`, `character_id`, `title`을 반환하고,
-프론트엔드는 사용자 입력 기반 제목을 `textContent`로 렌더링합니다.
+프론트엔드는 사용자 입력 기반 제목을 React의 기본 문자열 렌더링으로 escape합니다.
+
+## React 프론트엔드 경계
+
+프론트엔드는 React 컴포넌트가 `fetch`를 직접 호출하지 않도록 다음처럼 나눕니다.
+
+```text
+Components → App 상태/작업 조정 → ApiClient → FastAPI
+                                  ↘ SSE parser
+```
+
+인증, 캐릭터, 대화 목록, 채팅 컴포넌트는 화면 표현과 입력만 담당합니다. `App`은
+선택된 ID와 메시지 상태를 관리하고, `ApiClient`는 HTTP header와 경로를 관리합니다.
+SSE parser는 네트워크 chunk를 이벤트 단위로 복원해 UI와 독립적으로 테스트합니다.
+React의 기본 문자열 escape를 사용하며 `dangerouslySetInnerHTML`은 사용하지 않습니다.
 
 ## 운영 요청 경계
 

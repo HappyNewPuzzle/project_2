@@ -1,0 +1,59 @@
+# GitHub Actions 화면에 표시될 프론트엔드 검증 이름입니다.
+name: Frontend CI
+
+on:
+  # main 브랜치에 프론트엔드 변경이 push되면 실행합니다.
+  push:
+    branches: ["main"]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  # main 대상 pull request에도 같은 검사를 적용합니다.
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  # Actions 화면에서 필요할 때 직접 실행할 수 있습니다.
+  workflow_dispatch:
+
+# 같은 브랜치의 오래된 실행보다 최신 커밋 결과를 우선합니다.
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# 저장소 코드를 읽는 최소 권한만 허용합니다.
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      # 검사할 소스와 package-lock.json을 runner로 가져옵니다.
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      # 현재 LTS 계열 Node.js에서 실행하고 npm 다운로드 cache를 사용합니다.
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      # lock file과 정확히 같은 의존성을 재현 가능하게 설치합니다.
+      - name: Install dependencies
+        run: npm ci
+
+      # SSE parser와 API 유틸리티 단위 테스트를 실행합니다.
+      - name: Run tests
+        run: npm test
+
+      # strict TypeScript 검사와 production bundle 생성을 검증합니다.
+      - name: Build production bundle
+        run: npm run build

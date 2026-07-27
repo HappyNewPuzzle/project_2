@@ -31,6 +31,7 @@
 24. [22단계: pgvector 저장 구조](step-22-pgvector-storage.md)
 25. [23단계: 장기 기억 의미 검색](step-23-memory-semantic-search.md)
 26. [24단계: 대화방 제목 자동 생성](step-24-conversation-titles.md)
+27. [25단계: React + TypeScript 프론트엔드 구조화](step-25-react-frontend.md)
 
 각 문서를 읽은 뒤 문서에 링크된 실제 파일을 나란히 열어 보는 것을 권장합니다.
 라우터에서 시작해 서비스, repository, DB 모델 순으로 따라가면 요청 한 건의 흐름을
@@ -48,3 +49,4 @@
 - `tests`: 외부 시스템 없이 각 계층의 계약 검증
 - `.github/workflows`: GitHub에 push/PR 될 때 자동 검증하는 CI 설정
 - `scripts`: 배포 전 환경 설정을 점검하는 운영 보조 도구
+- `frontend/src`: React 컴포넌트, 상태, API client와 SSE parser
