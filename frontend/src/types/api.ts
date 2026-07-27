@@ -11,10 +11,17 @@ export interface CharacterCreate {
   speaking_style: string;
 }
 
-// 캐릭터 생성 응답에서 이후 채팅에 필요한 식별자와 표시 이름입니다.
+// 캐릭터 생성·목록 API가 반환하는 전체 공개 필드입니다.
 export interface Character {
   id: string;
+  owner_id: string | null;
   name: string;
+  description: string;
+  personality: string;
+  speaking_style: string;
+  system_prompt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // 대화 목록 API 한 건의 응답 형식입니다.

@@ -1,11 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
 import { AuthPanel } from "./components/AuthPanel";
+import { CharacterList } from "./components/CharacterList";
 import { CharacterPanel } from "./components/CharacterPanel";
 import { ChatPanel } from "./components/ChatPanel";
 import { ConversationList } from "./components/ConversationList";
 import { usePersistentState } from "./hooks/usePersistentState";
 import { ApiClient } from "./lib/api";
 import type {
+  Character,
   CharacterCreate,
   ChatMessageView,
   Conversation,
@@ -31,6 +33,7 @@ export default function App() {
     "conversationId",
     "",
   );
+  const [characters, setCharacters] = useState<Character[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<ChatMessageView[]>([]);
   const [status, setStatus] = useState(
@@ -62,6 +65,12 @@ export default function App() {
     setStatus(`대화 ${loaded.length}개를 불러왔습니다.`);
   }, [api]);
 
+  const loadCharacters = useCallback(async () => {
+    const loaded = await api.listCharacters();
+    setCharacters(loaded);
+    setStatus(`캐릭터 ${loaded.length}개를 불러왔습니다.`);
+  }, [api]);
+
   async function register(email: string, password: string) {
     await runAction(async () => {
       await api.register(email, password);
@@ -73,7 +82,18 @@ export default function App() {
     await runAction(async () => {
       const auth = await api.login(email, password);
       setToken(auth.access_token);
-      setStatus("로그인했습니다. 캐릭터를 만들거나 대화를 불러오세요.");
+
+      // state 반영을 기다리지 않고 새 토큰을 가진 client로 초기 목록을 동시에 읽습니다.
+      const authenticatedApi = new ApiClient(apiBaseUrl, auth.access_token);
+      const [loadedCharacters, loadedConversations] = await Promise.all([
+        authenticatedApi.listCharacters(),
+        authenticatedApi.listConversations(),
+      ]);
+      setCharacters(loadedCharacters);
+      setConversations(loadedConversations);
+      setStatus(
+        `로그인했습니다. 캐릭터 ${loadedCharacters.length}개와 대화 ${loadedConversations.length}개를 불러왔습니다.`,
+      );
     });
   }
 
@@ -83,8 +103,21 @@ export default function App() {
       setCharacterId(character.id);
       setConversationId("");
       setMessages([]);
+      // 생성 결과를 목록 앞에 넣어 별도 새로고침 없이 바로 선택 상태를 보여줍니다.
+      setCharacters((current) => [
+        character,
+        ...current.filter((item) => item.id !== character.id),
+      ]);
       setStatus(`캐릭터 생성 완료: ${character.name}`);
     });
+  }
+
+  function selectCharacter(character: Character) {
+    // 대화방은 생성 시 캐릭터가 고정되므로 선택 변경은 반드시 새 대화로 전환합니다.
+    setCharacterId(character.id);
+    setConversationId("");
+    setMessages([]);
+    setStatus(`“${character.name}” 캐릭터를 선택했습니다.`);
   }
 
   async function saveMemory() {
@@ -201,7 +234,7 @@ export default function App() {
     <main>
       <header className="hero">
         <div>
-          <p className="eyebrow">STEP 25 · REACT CLIENT</p>
+          <p className="eyebrow">STEP 26 · CHARACTER CATALOG</p>
           <h1>AI Character Chat</h1>
           <p>
             인증, 캐릭터, 대화 기록과 SSE 스트리밍을 컴포넌트로 분리한
@@ -228,6 +261,13 @@ export default function App() {
             disabled={busy || !token}
             onCreate={createCharacter}
             onSaveMemory={saveMemory}
+          />
+          <CharacterList
+            characters={characters}
+            selectedCharacterId={characterId}
+            disabled={busy || !token}
+            onReload={() => runAction(loadCharacters)}
+            onSelect={selectCharacter}
           />
           <ConversationList
             conversations={conversations}

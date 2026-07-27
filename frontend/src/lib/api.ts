@@ -90,6 +90,11 @@ export class ApiClient {
     });
   }
 
+  // 한 화면에서 선택할 수 있도록 현재 API 최대 크기인 100개까지 조회합니다.
+  async listCharacters(): Promise<Character[]> {
+    return this.json<Character[]>("/characters?offset=0&limit=100");
+  }
+
   async saveMemory(characterId: string): Promise<void> {
     await this.json("/memories", {
       method: "POST",

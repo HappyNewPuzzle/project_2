@@ -135,6 +135,11 @@ Components → App 상태/작업 조정 → ApiClient → FastAPI
 SSE parser는 네트워크 chunk를 이벤트 단위로 복원해 UI와 독립적으로 테스트합니다.
 React의 기본 문자열 escape를 사용하며 `dangerouslySetInnerHTML`은 사용하지 않습니다.
 
+캐릭터 목록은 백엔드가 권한 필터를 적용한 공용·사용자 소유 항목만 표시합니다.
+캐릭터를 선택하면 진행 중인 대화 ID를 제거해 다음 메시지가 선택 캐릭터의 새
+대화방으로 저장되게 합니다. 이전 대화를 열 때는 반대로 대화방의 `character_id`를
+선택 상태에 복원합니다.
+
 ## 운영 요청 경계
 
 ```text

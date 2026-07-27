@@ -232,6 +232,61 @@ textarea {
   overflow-y: auto;
 }
 
+.character-list {
+  display: grid;
+  gap: 8px;
+  max-height: 330px;
+  margin-top: 13px;
+  overflow-y: auto;
+}
+
+.character-item {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border: 1px solid #2a344b;
+  padding: 12px;
+  color: #dce5f8;
+  background: #0c121f;
+  text-align: left;
+}
+
+.character-item.active {
+  border-color: #9a83ff;
+  background: #252047;
+  box-shadow: inset 3px 0 #9a83ff;
+}
+
+.character-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.character-item-header small {
+  border-radius: 999px;
+  padding: 3px 7px;
+  color: #aebfff;
+  background: #29345a;
+  font-size: 10px;
+}
+
+.character-description,
+.character-style {
+  overflow: hidden;
+  color: #929eb6;
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-style {
+  color: #74819a;
+  font-size: 11px;
+}
+
 .conversation-item {
   display: grid;
   gap: 4px;

@@ -52,7 +52,7 @@ export function ChatPanel({
     <section className="panel chat-panel">
       <div className="chat-header">
         <div className="section-heading">
-          <span className="step-number">4</span>
+          <span className="step-number">5</span>
           <div>
             <h2>스트리밍 채팅</h2>
             <p>Enter로 전송하고 Shift+Enter로 줄을 바꿉니다.</p>
