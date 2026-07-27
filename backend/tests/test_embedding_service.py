@@ -97,7 +97,7 @@ def test_provider_factory_selects_openai_from_environment(monkeypatch) -> None:
     monkeypatch.setenv("EMBEDDING_PROVIDER", "openai")
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
-    monkeypatch.setenv("OPENAI_EMBEDDING_DIMENSIONS", "256")
+    monkeypatch.setenv("OPENAI_EMBEDDING_DIMENSIONS", "1536")
     # 두 함수가 이전 테스트의 설정 객체를 재사용하지 않도록 캐시를 비운다.
     get_settings.cache_clear()
     get_embedding_provider.cache_clear()
@@ -105,7 +105,7 @@ def test_provider_factory_selects_openai_from_environment(monkeypatch) -> None:
     provider = get_embedding_provider()
 
     assert isinstance(provider, OpenAIEmbeddingProvider)
-    assert provider.provider_name == "openai:text-embedding-3-small:256"
+    assert provider.provider_name == "openai:text-embedding-3-small:1536"
 
     # 뒤에 실행되는 테스트가 이 테스트의 설정을 재사용하지 않게 정리한다.
     get_embedding_provider.cache_clear()

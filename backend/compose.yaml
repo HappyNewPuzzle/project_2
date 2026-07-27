@@ -1,6 +1,7 @@
 services:
   db:
-    image: postgres:17-alpine
+    # PostgreSQL 17에 pgvector 확장이 설치된 공식 pgvector 이미지를 사용한다.
+    image: pgvector/pgvector:0.8.2-pg17-bookworm
     environment:
       POSTGRES_DB: character_chat
       POSTGRES_USER: postgres

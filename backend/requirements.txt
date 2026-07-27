@@ -1,6 +1,8 @@
 # Database와 migration
 alembic>=1.15,<2.0
 asyncpg>=0.30,<1.0
+# PostgreSQL vector 타입을 SQLAlchemy 모델과 쿼리에서 사용한다.
+pgvector>=0.3,<1.0
 sqlalchemy[asyncio]>=2.0.38,<3.0
 
 # Web API와 설정

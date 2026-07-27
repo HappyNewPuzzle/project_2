@@ -163,7 +163,12 @@ class MemoryEmbeddingService:
         query_vector = await self._provider.embed(query)
         results: list[MemorySearchResult] = []
         for embedding in await self._embeddings.list_all():
-            vector = json.loads(embedding.vector_json)
+            # migration 전 데이터는 JSON을, 새 데이터는 pgvector 컬럼을 읽는다.
+            vector = (
+                list(embedding.embedding)
+                if embedding.embedding is not None
+                else json.loads(embedding.vector_json)
+            )
             results.append(
                 MemorySearchResult(
                     memory_id=str(embedding.memory_id),

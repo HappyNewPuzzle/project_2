@@ -6,7 +6,7 @@
 
 ## 현재 단계
 
-21단계까지 구현되어 있습니다. Docker Compose로 API와 PostgreSQL을 함께 실행하고,
+22단계까지 구현되어 있습니다. Docker Compose로 API와 pgvector PostgreSQL을 함께 실행하고,
 health check·구조화 로그·요청 ID·기본 rate limit을 제공합니다. 또한 GitHub Actions로
 push/PR마다 pytest, PostgreSQL migration, 사용자 흐름 통합 테스트, Docker build를 자동
 검증합니다. 브라우저에서 API를 손으로 확인할 수 있는 최소 정적 프론트엔드도 포함합니다.
@@ -101,9 +101,10 @@ frontend/
 - 자동 기억 추출: 채팅 완료 후 LLM 기반 memory 후보 저장 구조
 - embedding 준비: memory embedding 저장 테이블과 provider 경계
 - OpenAI embedding: 환경변수로 hashing/OpenAI provider 선택
+- pgvector 저장: `VECTOR(1536)` 컬럼과 cosine HNSW index
 
-현재 DB 모델은 `users`, `characters`, `conversations`, `messages`, `memories`를
-포함합니다.
+현재 DB 모델은 `users`, `characters`, `conversations`, `messages`, `memories`,
+`memory_embeddings`를 포함합니다.
 
 ## 실행
 
@@ -380,6 +381,7 @@ python scripts/check_deploy_env.py --production
 19. 자동 기억 추출: 채팅 완료 후 장기 기억 후보 저장 구조 (완료)
 20. embedding 준비: pgvector 전환 전 저장 경계와 cosine 검색 기반 (완료)
 21. OpenAI embedding: 실제 의미 벡터 provider와 설정 기반 선택 (완료)
+22. pgvector 저장: PostgreSQL vector 확장, 컬럼, HNSW index (완료)
 
 ## 저장 동작
 

@@ -106,8 +106,8 @@ jobs:
     services:
       # workflow 안에서 이 DB를 postgres라는 이름으로 관리합니다.
       postgres:
-        # 운영 compose와 같은 PostgreSQL major 버전을 사용합니다.
-        image: postgres:17-alpine
+        # 운영 compose와 같은 PostgreSQL 17 + pgvector 이미지를 사용합니다.
+        image: pgvector/pgvector:0.8.2-pg17-bookworm
         # 테스트용 데이터베이스와 계정을 생성합니다.
         env:
           POSTGRES_DB: character_chat

@@ -4,6 +4,7 @@ import enum
 import uuid
 from datetime import datetime
 
+from pgvector.sqlalchemy import VECTOR
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
@@ -277,7 +278,7 @@ class Memory(Base):
 
 
 class MemoryEmbedding(Base):
-    """pgvector 전환 전 embedding 저장 경계를 제공하는 테이블."""
+    """장기 기억의 의미 벡터와 생성 provider 정보를 저장한다."""
 
     __tablename__ = "memory_embeddings"
 
@@ -288,8 +289,13 @@ class MemoryEmbedding(Base):
     )
     provider: Mapped[str] = mapped_column(String(100), nullable=False)
     dimensions: Mapped[int] = mapped_column(Integer, nullable=False)
-    # 지금은 JSON 문자열로 저장하고, 이후 pgvector Vector 컬럼으로 교체할 수 있다.
+    # 이전 버전과 안전하게 병행하기 위해 JSON 표현은 다음 정리 migration까지 유지한다.
     vector_json: Mapped[str] = mapped_column(Text, nullable=False)
+    # pgvector가 cosine 거리 계산과 HNSW index 검색에 사용할 실제 벡터 컬럼이다.
+    embedding: Mapped[list[float] | None] = mapped_column(
+        VECTOR(1536),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

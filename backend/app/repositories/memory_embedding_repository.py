@@ -30,11 +30,13 @@ class MemoryEmbeddingRepository:
             provider=provider,
             dimensions=len(vector),
             vector_json=json.dumps(vector),
+            embedding=vector,
         )
         update_values = {
             "provider": provider,
             "dimensions": len(vector),
             "vector_json": json.dumps(vector),
+            "embedding": vector,
         }
         await self._session.execute(
             statement.on_conflict_do_update(
@@ -46,7 +48,7 @@ class MemoryEmbeddingRepository:
     async def list_all(self) -> list[MemoryEmbedding]:
         """현재 저장된 embedding을 모두 반환한다.
 
-        데이터가 많아지면 이 메서드는 pgvector similarity query로 교체해야 한다.
+        23단계에서 전체 조회를 pgvector similarity query로 교체한다.
         """
 
         return list((await self._session.scalars(select(MemoryEmbedding))).all())

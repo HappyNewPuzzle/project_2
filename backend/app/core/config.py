@@ -40,12 +40,16 @@ class Settings(BaseSettings):
     auto_memory_max_items: int = Field(default=3, ge=1, le=10)
     # hashing은 로컬 개발과 테스트에서 외부 API 비용 없이 사용할 기본 provider다.
     embedding_provider: Literal["hashing", "openai"] = "hashing"
-    # pgvector 전환 전까지 테스트/개발용 hashing embedding 차원 수다.
-    embedding_dimensions: int = Field(default=32, ge=8, le=4096)
+    # DB의 VECTOR(1536) 컬럼과 길이를 맞추기 위해 provider 출력 차원을 고정한다.
+    embedding_dimensions: int = Field(default=1536, ge=1536, le=1536)
     # 실제 의미 기반 벡터가 필요할 때 사용할 OpenAI embedding 모델이다.
     openai_embedding_model: str = "text-embedding-3-small"
-    # text-embedding-3 계열은 dimensions 매개변수로 벡터 길이를 줄일 수 있다.
-    openai_embedding_dimensions: int = Field(default=1536, ge=1, le=3072)
+    # 모델을 바꾸더라도 migration 전까지 DB 벡터 차원과 같은 값을 유지해야 한다.
+    openai_embedding_dimensions: int = Field(
+        default=1536,
+        ge=1536,
+        le=1536,
+    )
 
     # API 키가 없어도 앱과 문서는 실행되며, 실제 채팅 요청에서 명확한 오류를 낸다.
     openai_api_key: str | None = None

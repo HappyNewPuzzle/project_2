@@ -28,6 +28,7 @@
 21. [19단계: 장기 기억 자동 추출 구조](step-19-auto-memory-extraction.md)
 22. [20단계: embedding / pgvector 검색 준비](step-20-embedding-pgvector-readiness.md)
 23. [21단계: OpenAI Embedding Provider](step-21-openai-embedding-provider.md)
+24. [22단계: pgvector 저장 구조](step-22-pgvector-storage.md)
 
 각 문서를 읽은 뒤 문서에 링크된 실제 파일을 나란히 열어 보는 것을 권장합니다.
 라우터에서 시작해 서비스, repository, DB 모델 순으로 따라가면 요청 한 건의 흐름을
