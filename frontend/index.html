@@ -129,6 +129,14 @@
         border-color: #60a5fa;
       }
 
+      .conversation-title {
+        font-weight: 700;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
       .conversation-meta {
         color: #9ca3af;
         font-size: 12px;
@@ -392,10 +400,14 @@
           if (conversation.id === state.conversationId) {
             button.classList.add("active");
           }
-          button.innerHTML = `
-            <span>${conversation.id}</span>
-            <span class="conversation-meta">updated: ${conversation.updated_at}</span>
-          `;
+          // title은 사용자 메시지에서 만들어지므로 innerHTML 대신 textContent를 사용합니다.
+          const title = document.createElement("span");
+          title.className = "conversation-title";
+          title.textContent = conversation.title;
+          const metadata = document.createElement("span");
+          metadata.className = "conversation-meta";
+          metadata.textContent = `updated: ${conversation.updated_at}`;
+          button.append(title, metadata);
           button.addEventListener("click", () => openConversation(conversation));
           elements.conversationList.appendChild(button);
         }

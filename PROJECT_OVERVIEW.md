@@ -28,7 +28,7 @@
 
 ## 현재 구현 상태
 
-현재는 23단계까지 구현되어 있습니다.
+현재는 24단계까지 구현되어 있습니다.
 
 ```text
 1단계  최소 채팅 API
@@ -54,6 +54,7 @@
 21단계 실제 OpenAI embedding provider
 22단계 pgvector 저장 구조와 HNSW index
 23단계 장기 기억 자동 embedding과 의미 검색 API
+24단계 대화방 제목 자동 생성과 프론트엔드 표시
 ```
 
 ## 전체 폴더 구조
@@ -349,6 +350,7 @@ Memory 1 ─── 0..1 MemoryEmbedding
 - 기억 저장
 - 스트리밍 채팅
 - 대화 목록 새로고침
+- 첫 메시지 기반 대화방 제목 표시
 - 이전 대화 열기
 - 현재 대화 삭제
 
@@ -478,7 +480,6 @@ python scripts/check_deploy_env.py --allow-missing-openai --allow-dev-secret
 아직 구현되지 않았거나 후속 개선이 필요한 부분입니다.
 
 - 운영용 프론트엔드 구조
-- 대화방 제목 자동 생성
 - 캐릭터 이미지 / 프로필 기능
 - 중복 memory 제거
 - 자동 memory 저장 전 사용자 승인 UI
@@ -497,7 +498,7 @@ python scripts/check_deploy_env.py --allow-missing-openai --allow-dev-secret
 21단계: 실제 OpenAI embedding provider 추가 (완료)
 22단계: pgvector 지원 PostgreSQL 이미지 전환 (완료)
 23단계: memory 검색 API 추가 (완료)
-24단계: 대화방 제목 자동 생성
+24단계: 대화방 제목 자동 생성 (완료)
 25단계: React 또는 Next.js 기반 프론트엔드 구조화
 ```
 

@@ -12,6 +12,7 @@ class ConversationResponse(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
     character_id: uuid.UUID
+    title: str
     created_at: datetime
     updated_at: datetime
 

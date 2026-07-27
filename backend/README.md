@@ -6,7 +6,7 @@
 
 ## 현재 단계
 
-23단계까지 구현되어 있습니다. Docker Compose로 API와 pgvector PostgreSQL을 함께 실행하고,
+24단계까지 구현되어 있습니다. Docker Compose로 API와 pgvector PostgreSQL을 함께 실행하고,
 health check·구조화 로그·요청 ID·기본 rate limit을 제공합니다. 또한 GitHub Actions로
 push/PR마다 pytest, PostgreSQL migration, 사용자 흐름 통합 테스트, Docker build를 자동
 검증합니다. 브라우저에서 API를 손으로 확인할 수 있는 최소 정적 프론트엔드도 포함합니다.
@@ -103,6 +103,7 @@ frontend/
 - OpenAI embedding: 환경변수로 hashing/OpenAI provider 선택
 - pgvector 저장: `VECTOR(1536)` 컬럼과 cosine HNSW index
 - 기억 의미 검색: 자동 색인, pgvector cosine 검색, 기존 기억 재색인
+- 대화방 제목: 첫 메시지 기반 자동 생성과 기존 데이터 migration
 
 현재 DB 모델은 `users`, `characters`, `conversations`, `messages`, `memories`,
 `memory_embeddings`를 포함합니다.
@@ -393,6 +394,7 @@ python scripts/check_deploy_env.py --production
 21. OpenAI embedding: 실제 의미 벡터 provider와 설정 기반 선택 (완료)
 22. pgvector 저장: PostgreSQL vector 확장, 컬럼, HNSW index (완료)
 23. 기억 의미 검색: 자동 embedding, 범위 검색 API, 재색인 (완료)
+24. 대화방 제목: 첫 메시지 기반 생성, 목록·프론트엔드 표시 (완료)
 
 ## 저장 동작
 
@@ -410,4 +412,4 @@ LLM 호출이 실패해도 사용자 메시지는 남습니다. 스트리밍 도
 
 - CI에서 `/health/ready` 통합 테스트 자동 검증
 - OpenTelemetry metrics와 tracing
-- 대화방 제목 자동 생성
+- React 또는 Next.js 기반 프론트엔드 구조화

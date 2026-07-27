@@ -155,6 +155,13 @@ class Conversation(Base):
         nullable=False,
         index=True,
     )
+    # 목록에서 UUID 대신 이해하기 쉬운 이름을 보여 주기 위한 자동 생성 제목이다.
+    title: Mapped[str] = mapped_column(
+        String(100),
+        default="새 대화",
+        server_default="새 대화",
+        nullable=False,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

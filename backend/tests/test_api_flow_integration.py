@@ -153,6 +153,12 @@ async def _run_api_flow() -> None:
                 for conversation in conversations_response.json()
             }
             assert chat_body["conversation_id"] in conversation_ids
+            created_conversation = next(
+                conversation
+                for conversation in conversations_response.json()
+                if conversation["id"] == chat_body["conversation_id"]
+            )
+            assert created_conversation["title"] == "HTTP로 대화해줘"
 
             # 9) 대화방 메시지 조회에서 user/assistant 기록을 확인한다.
             messages_response = await client.get(

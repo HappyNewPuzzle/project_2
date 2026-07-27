@@ -43,12 +43,14 @@ class ConversationRepository:
         character_id: uuid.UUID,
         *,
         user_id: uuid.UUID,
+        title: str,
     ) -> Conversation:
         """캐릭터에 연결된 새 대화방을 만들고 ID 생성을 위해 flush한다."""
 
         conversation = Conversation(
             character_id=character_id,
             user_id=user_id,
+            title=title,
         )
         self._session.add(conversation)
         # flush는 INSERT를 보내지만 commit은 하지 않아 트랜잭션 제어권을 서비스에 둔다.

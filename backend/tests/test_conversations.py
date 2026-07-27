@@ -26,6 +26,7 @@ def make_conversation() -> SimpleNamespace:
         id=CONVERSATION_ID,
         user_id=USER_ID,
         character_id=CHARACTER_ID,
+        title="천문학 이야기",
         created_at=now,
         updated_at=now,
     )
@@ -80,6 +81,7 @@ def test_list_conversations() -> None:
     assert response.status_code == 200
     assert response.json()[0]["id"] == str(CONVERSATION_ID)
     assert response.json()[0]["character_id"] == str(CHARACTER_ID)
+    assert response.json()[0]["title"] == "천문학 이야기"
 
 
 def test_list_conversation_messages() -> None:

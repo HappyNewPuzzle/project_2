@@ -27,6 +27,23 @@ from app.services.memory_extraction_service import MemoryExtractionService
 
 
 logger = logging.getLogger(__name__)
+CONVERSATION_TITLE_MAX_LENGTH = 50
+
+
+def build_conversation_title(message: str) -> str:
+    """첫 사용자 메시지를 공백 정리된 짧은 대화방 제목으로 바꾼다."""
+
+    # 줄바꿈과 연속 공백을 하나로 합쳐 목록 한 줄에 안정적으로 표시한다.
+    normalized = " ".join(message.split())
+    if not normalized:
+        return "새 대화"
+    if len(normalized) <= CONVERSATION_TITLE_MAX_LENGTH:
+        return normalized
+    # 말줄임표까지 최대 길이에 포함해 DB와 UI가 예측 가능한 길이를 받게 한다.
+    return (
+        normalized[: CONVERSATION_TITLE_MAX_LENGTH - 1].rstrip()
+        + "…"
+    )
 
 
 class ConversationNotFoundError(LookupError):
@@ -111,6 +128,7 @@ class ChatService:
                 conversation = await self._conversations.create(
                     active_character_id,
                     user_id=self._user_id,
+                    title=build_conversation_title(message),
                 )
             else:
                 # 기존 대화는 DB에 저장된 캐릭터를 계속 사용한다.

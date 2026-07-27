@@ -8,7 +8,11 @@ from types import SimpleNamespace
 import pytest
 
 from app.db.models import DEFAULT_CHARACTER_ID, MessageRole
-from app.services.chat_service import ChatService, ConversationNotFoundError
+from app.services.chat_service import (
+    ChatService,
+    ConversationNotFoundError,
+    build_conversation_title,
+)
 from app.services.llm_service import LLMMessage
 
 CONVERSATION_ID = uuid.UUID("33333333-3333-3333-3333-333333333333")
@@ -58,12 +62,14 @@ class FakeConversationRepository:
         character_id: uuid.UUID,
         *,
         user_id: uuid.UUID,
+        title: str,
     ) -> SimpleNamespace:
-        self._events.append("create_conversation")
+        self._events.append(f"create_conversation:{title}")
         return SimpleNamespace(
             id=CONVERSATION_ID,
             character_id=character_id,
             user_id=user_id,
+            title=title,
         )
 
     async def get(self, conversation_id: uuid.UUID) -> SimpleNamespace:
@@ -191,7 +197,7 @@ def test_reply_uses_character_and_recent_history() -> None:
     assert "Use gentle imagery." in llm.instructions
     assert events == [
         "get_character",
-        "create_conversation",
+        "create_conversation:Hello",
         "add_user",
         "touch_conversation",
         "commit",
@@ -223,3 +229,16 @@ def test_other_user_cannot_continue_conversation() -> None:
 
     with pytest.raises(ConversationNotFoundError):
         asyncio.run(service.reply("Hello", CONVERSATION_ID, None))
+
+
+def test_build_conversation_title_normalizes_and_truncates() -> None:
+    """첫 메시지의 공백을 정리하고 긴 제목에는 말줄임표를 붙인다."""
+
+    assert build_conversation_title("  안녕\n  오늘은 별 이야기야  ") == (
+        "안녕 오늘은 별 이야기야"
+    )
+
+    title = build_conversation_title("가" * 80)
+
+    assert len(title) == 50
+    assert title.endswith("…")
