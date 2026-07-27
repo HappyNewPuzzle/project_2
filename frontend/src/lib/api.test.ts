@@ -111,3 +111,99 @@ describe("ApiClient character mutations", () => {
     });
   });
 });
+
+describe("ApiClient memory management", () => {
+  it("기억 생성 범위와 중요도를 JSON으로 전송한다", async () => {
+    const memory = {
+      id: "memory-1",
+      character_id: "character-1",
+      content: "사용자는 별을 좋아한다.",
+      importance: 4,
+      is_active: true,
+      created_at: "2026-07-27T00:00:00Z",
+      updated_at: "2026-07-27T00:00:00Z",
+    };
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(memory), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ApiClient("http://localhost:8000", "token");
+
+    await expect(
+      client.createMemory({
+        content: "사용자는 별을 좋아한다.",
+        character_id: "character-1",
+        importance: 4,
+      }),
+    ).resolves.toEqual(memory);
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(request.method).toBe("POST");
+    expect(JSON.parse(request.body as string)).toEqual({
+      content: "사용자는 별을 좋아한다.",
+      character_id: "character-1",
+      importance: 4,
+    });
+  });
+
+  it("기억 활성 상태를 PATCH로 변경한다", async () => {
+    const updated = {
+      id: "memory-1",
+      character_id: null,
+      content: "전역 기억",
+      importance: 3,
+      is_active: false,
+      created_at: "2026-07-27T00:00:00Z",
+      updated_at: "2026-07-27T01:00:00Z",
+    };
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(updated), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ApiClient("http://localhost:8000", "token");
+
+    await client.updateMemory("memory-1", { is_active: false });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:8000/memories/memory-1",
+    );
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(request.method).toBe("PATCH");
+    expect(request.body).toBe(JSON.stringify({ is_active: false }));
+  });
+
+  it("기억 목록은 최대 100개 범위를 요청한다", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("[]", {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ApiClient("http://localhost:8000", "token");
+
+    await expect(client.listMemories()).resolves.toEqual([]);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:8000/memories?offset=0&limit=100",
+    );
+  });
+
+  it("기억 삭제를 인증된 DELETE 요청으로 보낸다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ApiClient("http://localhost:8000", "memory-token");
+
+    await expect(client.deleteMemory("memory-1")).resolves.toBeUndefined();
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(request.method).toBe("DELETE");
+    expect(new Headers(request.headers).get("Authorization")).toBe(
+      "Bearer memory-token",
+    );
+  });
+});

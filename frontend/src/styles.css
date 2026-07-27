@@ -23,7 +23,8 @@ body {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -187,7 +188,8 @@ label {
 }
 
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   border: 1px solid #303b55;
   border-radius: 10px;
@@ -198,9 +200,14 @@ textarea {
 }
 
 input:focus,
-textarea:focus {
+textarea:focus,
+select:focus {
   border-color: #7ca6fb;
   box-shadow: 0 0 0 3px #7ca6fb20;
+}
+
+select {
+  cursor: pointer;
 }
 
 textarea {
@@ -340,6 +347,79 @@ textarea {
   background: #301823;
   font-size: 12px;
   line-height: 1.5;
+}
+
+.memory-options {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 100px;
+  gap: 10px;
+}
+
+.memory-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  margin-top: 18px;
+  border-top: 1px solid #263047;
+  padding-top: 14px;
+}
+
+.memory-list {
+  display: grid;
+  gap: 9px;
+  max-height: 420px;
+  margin-top: 12px;
+  overflow-y: auto;
+}
+
+.memory-item {
+  display: grid;
+  gap: 9px;
+  border: 1px solid #2d3a51;
+  border-radius: 12px;
+  padding: 12px;
+  background: #0c121f;
+}
+
+.memory-item.inactive {
+  opacity: 0.58;
+}
+
+.memory-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #91aef0;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.memory-item-header small {
+  color: #7c89a2;
+  font-weight: 600;
+}
+
+.memory-item p {
+  margin: 0;
+  color: #d2daeb;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+button.compact {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+.memory-item select {
+  width: auto;
+  min-height: 34px;
+  padding: 6px 8px;
+  font-size: 11px;
 }
 
 .conversation-item {
@@ -507,6 +587,11 @@ textarea {
   }
 
   .composer {
+    grid-template-columns: 1fr;
+  }
+
+  .memory-options,
+  .memory-toolbar {
     grid-template-columns: 1fr;
   }
 }

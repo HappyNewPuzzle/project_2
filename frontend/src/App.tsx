@@ -5,6 +5,7 @@ import { CharacterList } from "./components/CharacterList";
 import { CharacterPanel } from "./components/CharacterPanel";
 import { ChatPanel } from "./components/ChatPanel";
 import { ConversationList } from "./components/ConversationList";
+import { MemoryPanel } from "./components/MemoryPanel";
 import { usePersistentState } from "./hooks/usePersistentState";
 import { ApiClient, ApiError } from "./lib/api";
 import type {
@@ -13,6 +14,9 @@ import type {
   CharacterUpdate,
   ChatMessageView,
   Conversation,
+  Memory,
+  MemoryCreate,
+  MemoryUpdate,
 } from "./types/api";
 
 // unknown인 JSON이 객체인지 먼저 검사해 잘못된 SSE payload 접근을 막습니다.
@@ -36,6 +40,7 @@ export default function App() {
     "",
   );
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [memories, setMemories] = useState<Memory[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<ChatMessageView[]>([]);
   const [status, setStatus] = useState(
@@ -77,6 +82,12 @@ export default function App() {
     setStatus(`캐릭터 ${loaded.length}개를 불러왔습니다.`);
   }, [api]);
 
+  const loadMemories = useCallback(async () => {
+    const loaded = await api.listMemories();
+    setMemories(loaded);
+    setStatus(`장기 기억 ${loaded.length}개를 불러왔습니다.`);
+  }, [api]);
+
   async function register(email: string, password: string) {
     await runAction(async () => {
       await api.register(email, password);
@@ -91,14 +102,17 @@ export default function App() {
 
       // state 반영을 기다리지 않고 새 토큰을 가진 client로 초기 목록을 동시에 읽습니다.
       const authenticatedApi = new ApiClient(apiBaseUrl, auth.access_token);
-      const [loadedCharacters, loadedConversations] = await Promise.all([
-        authenticatedApi.listCharacters(),
-        authenticatedApi.listConversations(),
-      ]);
+      const [loadedCharacters, loadedConversations, loadedMemories] =
+        await Promise.all([
+          authenticatedApi.listCharacters(),
+          authenticatedApi.listConversations(),
+          authenticatedApi.listMemories(),
+        ]);
       setCharacters(loadedCharacters);
       setConversations(loadedConversations);
+      setMemories(loadedMemories);
       setStatus(
-        `로그인했습니다. 캐릭터 ${loadedCharacters.length}개와 대화 ${loadedConversations.length}개를 불러왔습니다.`,
+        `로그인했습니다. 캐릭터 ${loadedCharacters.length}개, 대화 ${loadedConversations.length}개, 기억 ${loadedMemories.length}개를 불러왔습니다.`,
       );
     });
   }
@@ -163,11 +177,41 @@ export default function App() {
     });
   }
 
-  async function saveMemory() {
+  async function createMemory(payload: MemoryCreate) {
+    let createdSuccessfully = false;
     await runAction(async () => {
-      await api.saveMemory(characterId);
-      setStatus("테스트 장기 기억을 저장했습니다.");
+      const created = await api.createMemory(payload);
+      setMemories((current) => [
+        created,
+        ...current.filter((memory) => memory.id !== created.id),
+      ]);
+      setStatus("새 장기 기억을 저장했습니다.");
+      createdSuccessfully = true;
     });
+    return createdSuccessfully;
+  }
+
+  async function updateMemory(memoryId: string, payload: MemoryUpdate) {
+    await runAction(async () => {
+      const updated = await api.updateMemory(memoryId, payload);
+      setMemories((current) =>
+        current.map((memory) => (memory.id === updated.id ? updated : memory)),
+      );
+      setStatus("장기 기억을 수정했습니다.");
+    });
+  }
+
+  async function deleteMemory(memoryId: string) {
+    let deletedSuccessfully = false;
+    await runAction(async () => {
+      await api.deleteMemory(memoryId);
+      setMemories((current) =>
+        current.filter((memory) => memory.id !== memoryId),
+      );
+      setStatus("장기 기억을 삭제했습니다.");
+      deletedSuccessfully = true;
+    });
+    return deletedSuccessfully;
   }
 
   async function openConversation(conversation: Conversation) {
@@ -277,7 +321,7 @@ export default function App() {
     <main>
       <header className="hero">
         <div>
-          <p className="eyebrow">STEP 27 · CHARACTER MANAGEMENT</p>
+          <p className="eyebrow">STEP 28 · LONG-TERM MEMORY</p>
           <h1>AI Character Chat</h1>
           <p>
             인증, 캐릭터, 대화 기록과 SSE 스트리밍을 컴포넌트로 분리한
@@ -303,7 +347,6 @@ export default function App() {
             selectedCharacterId={characterId}
             disabled={busy || !token}
             onCreate={createCharacter}
-            onSaveMemory={saveMemory}
           />
           <CharacterList
             characters={characters}
@@ -317,6 +360,16 @@ export default function App() {
             disabled={busy || !token}
             onUpdate={updateCharacter}
             onDelete={deleteCharacter}
+          />
+          <MemoryPanel
+            memories={memories}
+            characters={characters}
+            selectedCharacterId={characterId}
+            disabled={busy || !token}
+            onReload={() => runAction(loadMemories)}
+            onCreate={createMemory}
+            onUpdate={updateMemory}
+            onDelete={deleteMemory}
           />
           <ConversationList
             conversations={conversations}

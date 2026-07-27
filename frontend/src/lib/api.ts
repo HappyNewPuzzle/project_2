@@ -6,6 +6,9 @@ import type {
   CharacterUpdate,
   ChatRequest,
   Conversation,
+  Memory,
+  MemoryCreate,
+  MemoryUpdate,
   SavedMessage,
   SseEvent,
 } from "../types/api";
@@ -129,16 +132,35 @@ export class ApiClient {
     await ensureOk(response);
   }
 
-  async saveMemory(characterId: string): Promise<void> {
-    await this.json("/memories", {
+  async createMemory(payload: MemoryCreate): Promise<Memory> {
+    return this.json<Memory>("/memories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        content: "사용자는 React 프론트엔드에서 테스트 중이다",
-        character_id: characterId || null,
-        importance: 3,
-      }),
+      body: JSON.stringify(payload),
     });
+  }
+
+  async listMemories(): Promise<Memory[]> {
+    return this.json<Memory[]>("/memories?offset=0&limit=100");
+  }
+
+  async updateMemory(
+    memoryId: string,
+    payload: MemoryUpdate,
+  ): Promise<Memory> {
+    return this.json<Memory>(`/memories/${memoryId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteMemory(memoryId: string): Promise<void> {
+    const response = await fetch(this.url(`/memories/${memoryId}`), {
+      method: "DELETE",
+      headers: this.authHeaders(),
+    });
+    await ensureOk(response);
   }
 
   async listConversations(): Promise<Conversation[]> {

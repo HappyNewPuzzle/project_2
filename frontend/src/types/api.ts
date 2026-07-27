@@ -33,6 +33,31 @@ export interface Character {
   updated_at: string;
 }
 
+// 새 장기 기억은 전역 또는 특정 캐릭터 범위에 연결됩니다.
+export interface MemoryCreate {
+  content: string;
+  character_id: string | null;
+  importance: number;
+}
+
+// 기억 내용, 중요도와 활성 상태는 각각 부분 수정할 수 있습니다.
+export interface MemoryUpdate {
+  content?: string;
+  importance?: number;
+  is_active?: boolean;
+}
+
+// 기억 목록과 CRUD 응답에서 사용하는 전체 공개 필드입니다.
+export interface Memory {
+  id: string;
+  character_id: string | null;
+  content: string;
+  importance: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // 대화 목록 API 한 건의 응답 형식입니다.
 export interface Conversation {
   id: string;

@@ -5,7 +5,6 @@ interface CharacterPanelProps {
   selectedCharacterId: string;
   disabled: boolean;
   onCreate: (payload: CharacterCreate) => Promise<void>;
-  onSaveMemory: () => Promise<void>;
 }
 
 // 캐릭터 작성 폼은 입력 상태를 소유하고, 생성된 ID는 App의 공통 상태로 올립니다.
@@ -13,7 +12,6 @@ export function CharacterPanel({
   selectedCharacterId,
   disabled,
   onCreate,
-  onSaveMemory,
 }: CharacterPanelProps) {
   const [name, setName] = useState("루나");
   const [description, setDescription] = useState("달빛 도서관의 사서");
@@ -71,14 +69,6 @@ export function CharacterPanel({
         <div className="actions">
           <button type="submit" disabled={disabled}>
             캐릭터 생성
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            disabled={disabled}
-            onClick={onSaveMemory}
-          >
-            테스트 기억 저장
           </button>
         </div>
       </form>
