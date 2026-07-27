@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import math
+import uuid
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, Protocol
@@ -141,9 +141,12 @@ class MemoryEmbeddingService:
         self,
         session: AsyncSession,
         provider: EmbeddingProvider,
+        *,
+        user_id: uuid.UUID,
     ) -> None:
         self._session = session
         self._provider = provider
+        self._user_id = user_id
         self._embeddings = MemoryEmbeddingRepository(session)
 
     async def index_memory(self, *, memory_id, content: str) -> None:
@@ -157,22 +160,26 @@ class MemoryEmbeddingService:
         )
         await self._session.commit()
 
-    async def search(self, query: str, *, limit: int) -> list[MemorySearchResult]:
-        """현재는 Python에서 cosine을 계산하고, 이후 pgvector 쿼리로 교체한다."""
+    async def search(
+        self,
+        query: str,
+        *,
+        character_id: uuid.UUID | None,
+        limit: int,
+    ) -> list[MemorySearchResult]:
+        """pgvector cosine query로 현재 사용자의 가까운 memory ID를 반환한다."""
 
         query_vector = await self._provider.embed(query)
-        results: list[MemorySearchResult] = []
-        for embedding in await self._embeddings.list_all():
-            # migration 전 데이터는 JSON을, 새 데이터는 pgvector 컬럼을 읽는다.
-            vector = (
-                list(embedding.embedding)
-                if embedding.embedding is not None
-                else json.loads(embedding.vector_json)
+        rows = await self._embeddings.search(
+            user_id=self._user_id,
+            query_vector=query_vector,
+            character_id=character_id,
+            limit=limit,
+        )
+        return [
+            MemorySearchResult(
+                memory_id=str(memory.id),
+                score=score,
             )
-            results.append(
-                MemorySearchResult(
-                    memory_id=str(embedding.memory_id),
-                    score=cosine_similarity(query_vector, vector),
-                )
-            )
-        return sorted(results, key=lambda result: result.score, reverse=True)[:limit]
+            for memory, score in rows
+        ]

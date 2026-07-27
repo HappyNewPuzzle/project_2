@@ -98,6 +98,22 @@ input:
 사용자가 작성한 기억을 `instructions`에 넣지 않는 이유는 사용자 데이터를
 애플리케이션 개발자 규칙과 같은 높은 권한으로 승격하지 않기 위해서입니다.
 
+기억 생성과 내용 수정은 `memories` 행과 1536차원 embedding을 한 트랜잭션으로
+저장합니다. 의미 검색은 애플리케이션에서 모든 벡터를 읽지 않고 pgvector가 cosine
+거리순 상위 결과만 반환하게 합니다.
+
+```text
+기억 내용
+  → EmbeddingProvider
+  → memory_embeddings.embedding VECTOR(1536)
+  → HNSW cosine index
+  → 사용자·활성 상태·캐릭터 범위 필터
+  → 상위 N개 기억
+```
+
+검색에서 `character_id`를 지정하면 전역 기억과 해당 캐릭터 기억만 포함합니다. 사용자
+ID 조건은 항상 SQL에 포함해 다른 사용자의 벡터가 결과 후보가 되는 것을 막습니다.
+
 ## 운영 요청 경계
 
 ```text

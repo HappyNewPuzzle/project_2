@@ -18,6 +18,10 @@ from app.services.character_service import (
     CharacterNotFoundError,
     build_character_instructions,
 )
+from app.services.embedding_service import (
+    EmbeddingProvider,
+    get_embedding_provider,
+)
 from app.services.llm_service import LLMMessage, LLMProvider
 from app.services.memory_extraction_service import MemoryExtractionService
 
@@ -69,6 +73,7 @@ class ChatService:
         memory_limit: int,
         auto_memory_enabled: bool = False,
         auto_memory_max_items: int = 3,
+        embedding_provider: EmbeddingProvider | None = None,
     ) -> None:
         self._session = session
         self._llm = llm
@@ -77,6 +82,9 @@ class ChatService:
         self._memory_limit = memory_limit
         self._auto_memory_enabled = auto_memory_enabled
         self._auto_memory_max_items = auto_memory_max_items
+        self._embedding_provider = (
+            embedding_provider or get_embedding_provider()
+        )
         self._characters = CharacterRepository(session)
         self._conversations = ConversationRepository(session)
         self._messages = MessageRepository(session)
@@ -276,6 +284,7 @@ class ChatService:
                 self._llm,
                 user_id=self._user_id,
                 max_items=self._auto_memory_max_items,
+                embedding_provider=self._embedding_provider,
             ).extract_and_store(
                 user_message=user_message,
                 assistant_reply=assistant_reply,

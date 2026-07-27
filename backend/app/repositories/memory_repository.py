@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Memory
+from app.db.models import Memory, MemoryEmbedding
 from app.schemas.memory import MemoryCreate, MemoryUpdate
 
 
@@ -66,6 +66,34 @@ class MemoryRepository:
                 Memory.updated_at.desc(),
                 Memory.id,
             )
+            .limit(limit)
+        )
+        return list((await self._session.scalars(statement)).all())
+
+    async def list_needing_embedding(
+        self,
+        user_id: uuid.UUID,
+        *,
+        provider: str,
+        limit: int,
+    ) -> list[Memory]:
+        """벡터가 없거나 현재 provider와 다른 기억을 재색인 대상으로 고른다."""
+
+        statement = (
+            select(Memory)
+            .outerjoin(
+                MemoryEmbedding,
+                MemoryEmbedding.memory_id == Memory.id,
+            )
+            .where(
+                Memory.user_id == user_id,
+                or_(
+                    MemoryEmbedding.memory_id.is_(None),
+                    MemoryEmbedding.embedding.is_(None),
+                    MemoryEmbedding.provider != provider,
+                ),
+            )
+            .order_by(Memory.updated_at.desc(), Memory.id)
             .limit(limit)
         )
         return list((await self._session.scalars(statement)).all())

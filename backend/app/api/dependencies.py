@@ -17,12 +17,20 @@ from app.services.auth_service import AuthService
 from app.services.chat_service import ChatService
 from app.services.character_service import CharacterService
 from app.services.conversation_service import ConversationService
+from app.services.embedding_service import (
+    EmbeddingProvider,
+    get_embedding_provider,
+)
 from app.services.llm_service import LLMProvider, get_llm_provider
 from app.services.memory_service import MemoryService
 
 # 타입 별칭에 Depends를 함께 넣으면 라우터 함수의 매개변수가 간결해진다.
 SessionDependency = Annotated[AsyncSession, Depends(get_db_session)]
 LLMDependency = Annotated[LLMProvider, Depends(get_llm_provider)]
+EmbeddingDependency = Annotated[
+    EmbeddingProvider,
+    Depends(get_embedding_provider),
+]
 
 # Swagger UI의 Authorize 버튼과 Authorization: Bearer 헤더 파싱을 함께 제공한다.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -123,6 +131,7 @@ ChatRateLimitDependency = Annotated[
 def get_chat_service(
     session: SessionDependency,
     llm: LLMDependency,
+    embedding_provider: EmbeddingDependency,
     current_user: CurrentUserDependency,
     _rate_limit: ChatRateLimitDependency,
 ) -> ChatService:
@@ -136,6 +145,7 @@ def get_chat_service(
         memory_limit=get_settings().chat_memory_limit,
         auto_memory_enabled=get_settings().auto_memory_enabled,
         auto_memory_max_items=get_settings().auto_memory_max_items,
+        embedding_provider=embedding_provider,
     )
 
 
@@ -160,10 +170,15 @@ CharacterServiceDependency = Annotated[
 def get_memory_service(
     session: SessionDependency,
     current_user: CurrentUserDependency,
+    embedding_provider: EmbeddingDependency,
 ) -> MemoryService:
     """현재 사용자 범위로 제한된 장기 기억 서비스를 만든다."""
 
-    return MemoryService(session, user_id=current_user.id)
+    return MemoryService(
+        session,
+        user_id=current_user.id,
+        embedding_provider=embedding_provider,
+    )
 
 
 MemoryServiceDependency = Annotated[MemoryService, Depends(get_memory_service)]

@@ -38,3 +38,15 @@ class MemoryResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class MemorySearchResponse(MemoryResponse):
+    """의미 검색 결과에 cosine similarity 점수를 함께 반환한다."""
+
+    score: float = Field(ge=-1.0, le=1.0)
+
+
+class MemoryReindexResponse(BaseModel):
+    """한 번의 재색인 요청으로 갱신한 기억 개수."""
+
+    indexed_count: int = Field(ge=0)

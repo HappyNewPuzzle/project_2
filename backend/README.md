@@ -6,7 +6,7 @@
 
 ## 현재 단계
 
-22단계까지 구현되어 있습니다. Docker Compose로 API와 pgvector PostgreSQL을 함께 실행하고,
+23단계까지 구현되어 있습니다. Docker Compose로 API와 pgvector PostgreSQL을 함께 실행하고,
 health check·구조화 로그·요청 ID·기본 rate limit을 제공합니다. 또한 GitHub Actions로
 push/PR마다 pytest, PostgreSQL migration, 사용자 흐름 통합 테스트, Docker build를 자동
 검증합니다. 브라우저에서 API를 손으로 확인할 수 있는 최소 정적 프론트엔드도 포함합니다.
@@ -102,6 +102,7 @@ frontend/
 - embedding 준비: memory embedding 저장 테이블과 provider 경계
 - OpenAI embedding: 환경변수로 hashing/OpenAI provider 선택
 - pgvector 저장: `VECTOR(1536)` 컬럼과 cosine HNSW index
+- 기억 의미 검색: 자동 색인, pgvector cosine 검색, 기존 기억 재색인
 
 현재 DB 모델은 `users`, `characters`, `conversations`, `messages`, `memories`,
 `memory_embeddings`를 포함합니다.
@@ -179,11 +180,11 @@ level, logger, message, request_id, HTTP 처리 시간 등을 한 줄 JSON으로
 ## Rate limit
 
 - 회원가입/로그인: IP별 `AUTH_RATE_LIMIT_PER_MINUTE`
-- 채팅/스트리밍: 사용자 UUID별 `CHAT_RATE_LIMIT_PER_MINUTE`
+- 채팅/스트리밍/기억 검색·재색인: 사용자 UUID별 `CHAT_RATE_LIMIT_PER_MINUTE`
 - 초과 응답: HTTP 429와 `Retry-After` 헤더
 
-현재 제한기는 단일 프로세스 메모리에 저장됩니다. 여러 worker나 여러 컨테이너에서는
-상태를 공유하지 않으므로 운영 확장 시 Redis 기반 제한기로 교체해야 합니다.
+`REDIS_URL`이 있으면 여러 worker와 컨테이너가 공유하는 Redis 제한기를 사용합니다.
+값이 없으면 로컬 개발을 위한 단일 프로세스 메모리 제한기로 동작합니다.
 
 ## 테스트
 
@@ -259,8 +260,17 @@ DELETE /memories/{memory_id}
 ```
 
 `character_id`를 생략한 기억은 모든 캐릭터 대화에, 지정한 기억은 해당 캐릭터
-대화에만 사용됩니다. 현재 단계에서는 기억을 명시적으로 관리하며 자동 추출은
-후속 개선 사항입니다.
+대화에만 사용됩니다. 기억 생성과 내용 수정 시 embedding도 자동 갱신됩니다.
+
+의미가 가까운 기억을 검색하거나 기존 기억을 현재 provider로 재색인할 수 있습니다.
+
+```text
+GET  /memories/search?query=천문학&character_id={character_id}&limit=10
+POST /memories/reindex?limit=100
+```
+
+검색과 재색인은 embedding 비용이 발생할 수 있어 채팅과 같은 사용자별 rate limit을
+적용합니다.
 
 생성한 캐릭터와 채팅합니다.
 
@@ -382,6 +392,7 @@ python scripts/check_deploy_env.py --production
 20. embedding 준비: pgvector 전환 전 저장 경계와 cosine 검색 기반 (완료)
 21. OpenAI embedding: 실제 의미 벡터 provider와 설정 기반 선택 (완료)
 22. pgvector 저장: PostgreSQL vector 확장, 컬럼, HNSW index (완료)
+23. 기억 의미 검색: 자동 embedding, 범위 검색 API, 재색인 (완료)
 
 ## 저장 동작
 
@@ -399,4 +410,4 @@ LLM 호출이 실패해도 사용자 메시지는 남습니다. 스트리밍 도
 
 - CI에서 `/health/ready` 통합 테스트 자동 검증
 - OpenTelemetry metrics와 tracing
-- pgvector 기반 장기 기억 의미 검색
+- 대화방 제목 자동 생성

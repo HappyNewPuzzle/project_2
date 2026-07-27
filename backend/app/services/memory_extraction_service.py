@@ -11,8 +11,13 @@ from typing import Any
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.repositories.memory_embedding_repository import MemoryEmbeddingRepository
 from app.repositories.memory_repository import MemoryRepository
 from app.schemas.memory import MemoryCreate
+from app.services.embedding_service import (
+    EmbeddingProvider,
+    get_embedding_provider,
+)
 from app.services.llm_service import LLMMessage, LLMProvider
 
 
@@ -37,12 +42,17 @@ class MemoryExtractionService:
         *,
         user_id: uuid.UUID,
         max_items: int,
+        embedding_provider: EmbeddingProvider | None = None,
     ) -> None:
         self._session = session
         self._llm = llm
         self._user_id = user_id
         self._max_items = max_items
+        self._embedding_provider = (
+            embedding_provider or get_embedding_provider()
+        )
         self._memories = MemoryRepository(session)
+        self._embeddings = MemoryEmbeddingRepository(session)
 
     async def extract(
         self,
@@ -120,14 +130,24 @@ class MemoryExtractionService:
             return 0
 
         try:
-            for memory in memories:
-                await self._memories.create(
+            # DB 쓰기 전에 모든 vector를 만들어 provider 실패 시 부분 저장을 피한다.
+            vectors = [
+                await self._embedding_provider.embed(memory.content)
+                for memory in memories
+            ]
+            for memory, vector in zip(memories, vectors, strict=True):
+                saved = await self._memories.create(
                     MemoryCreate(
                         content=memory.content,
                         character_id=character_id,
                         importance=memory.importance,
                     ),
                     user_id=self._user_id,
+                )
+                await self._embeddings.upsert(
+                    memory_id=saved.id,
+                    provider=self._embedding_provider.provider_name,
+                    vector=vector,
                 )
             await self._session.commit()
             return len(memories)

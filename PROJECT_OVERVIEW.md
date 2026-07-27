@@ -28,7 +28,7 @@
 
 ## 현재 구현 상태
 
-현재는 22단계까지 구현되어 있습니다.
+현재는 23단계까지 구현되어 있습니다.
 
 ```text
 1단계  최소 채팅 API
@@ -53,6 +53,7 @@
 20단계 embedding / pgvector 검색 준비
 21단계 실제 OpenAI embedding provider
 22단계 pgvector 저장 구조와 HNSW index
+23단계 장기 기억 자동 embedding과 의미 검색 API
 ```
 
 ## 전체 폴더 구조
@@ -280,8 +281,9 @@ EmbeddingProvider
   → HNSW cosine index
 ```
 
-아직 사용자 범위의 의미 검색 API는 연결하지 않았습니다. 다음 단계에서 PostgreSQL
-cosine distance query와 기억 자동 재색인을 서비스 계층에 연결합니다.
+기억 생성·내용 수정·자동 추출 시 embedding을 함께 저장합니다. 검색 API는 현재 사용자,
+활성 상태, 전역/캐릭터 범위를 SQL에서 제한하고 pgvector cosine distance로 정렬합니다.
+기존 미색인 기억은 제한된 batch 재색인 API로 보완할 수 있습니다.
 
 ### Rate limit
 
@@ -478,9 +480,6 @@ python scripts/check_deploy_env.py --allow-missing-openai --allow-dev-secret
 - 운영용 프론트엔드 구조
 - 대화방 제목 자동 생성
 - 캐릭터 이미지 / 프로필 기능
-- 사용자 범위를 지키는 pgvector similarity 검색 API
-- pgvector 확장 적용
-- memory 검색 API
 - 중복 memory 제거
 - 자동 memory 저장 전 사용자 승인 UI
 - Redis 장애 시 fallback 정책
@@ -497,7 +496,7 @@ python scripts/check_deploy_env.py --allow-missing-openai --allow-dev-secret
 ```text
 21단계: 실제 OpenAI embedding provider 추가 (완료)
 22단계: pgvector 지원 PostgreSQL 이미지 전환 (완료)
-23단계: memory 검색 API 추가
+23단계: memory 검색 API 추가 (완료)
 24단계: 대화방 제목 자동 생성
 25단계: React 또는 Next.js 기반 프론트엔드 구조화
 ```
