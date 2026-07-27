@@ -6,7 +6,7 @@
 
 ## 현재 단계
 
-26단계까지 구현되어 있습니다. Docker Compose로 API와 pgvector PostgreSQL을 함께 실행하고,
+27단계까지 구현되어 있습니다. Docker Compose로 API와 pgvector PostgreSQL을 함께 실행하고,
 health check·구조화 로그·요청 ID·기본 rate limit을 제공합니다. 또한 GitHub Actions로
 push/PR마다 pytest, PostgreSQL migration, 사용자 흐름 통합 테스트, Docker build를 자동
 검증합니다. React + TypeScript 프론트엔드에서 인증부터 SSE 채팅까지 확인할 수 있습니다.
@@ -114,6 +114,7 @@ frontend/
 - 대화방 제목: 첫 메시지 기반 자동 생성과 기존 데이터 migration
 - React 프론트엔드: TypeScript 컴포넌트, API client, SSE parser, Vitest와 CI
 - 캐릭터 선택 UI: 공용·사용자 소유 캐릭터 목록 조회와 새 대화 전환
+- 캐릭터 관리 UI: 사용자 소유 캐릭터 수정·확인 후 삭제와 409 안내
 
 현재 DB 모델은 `users`, `characters`, `conversations`, `messages`, `memories`,
 `memory_embeddings`를 포함합니다.
@@ -407,6 +408,7 @@ python scripts/check_deploy_env.py --production
 24. 대화방 제목: 첫 메시지 기반 생성, 목록·프론트엔드 표시 (완료)
 25. React 프론트엔드: TypeScript/Vite 구조, 테스트와 CI (완료)
 26. 캐릭터 선택 UI: 기존 캐릭터 목록 조회와 선택 (완료)
+27. 캐릭터 관리 UI: 사용자 소유 캐릭터 수정과 삭제 (완료)
 
 ## 저장 동작
 
@@ -424,5 +426,5 @@ LLM 호출이 실패해도 사용자 메시지는 남습니다. 스트리밍 도
 
 - CI에서 `/health/ready` 통합 테스트 자동 검증
 - OpenTelemetry metrics와 tracing
-- 사용자 소유 캐릭터 수정·삭제 UI
+- 장기 기억 목록·작성·활성화·삭제 UI
 - 프론트엔드 브라우저 E2E 테스트

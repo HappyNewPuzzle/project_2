@@ -3,6 +3,7 @@ import type {
   AuthToken,
   Character,
   CharacterCreate,
+  CharacterUpdate,
   ChatRequest,
   Conversation,
   SavedMessage,
@@ -31,9 +32,23 @@ async function ensureOk(response: Response): Promise<Response> {
     return response;
   }
   const body = await response.text();
+  let detail = body;
+  try {
+    const parsed = JSON.parse(body) as unknown;
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "detail" in parsed &&
+      typeof parsed.detail === "string"
+    ) {
+      detail = parsed.detail;
+    }
+  } catch {
+    // JSON이 아닌 proxy 오류 페이지라면 원문을 그대로 사용합니다.
+  }
   throw new ApiError(
     response.status,
-    `${response.status} ${response.statusText}: ${body}`,
+    `${response.status} ${response.statusText}: ${detail}`,
   );
 }
 
@@ -93,6 +108,25 @@ export class ApiClient {
   // 한 화면에서 선택할 수 있도록 현재 API 최대 크기인 100개까지 조회합니다.
   async listCharacters(): Promise<Character[]> {
     return this.json<Character[]>("/characters?offset=0&limit=100");
+  }
+
+  async updateCharacter(
+    characterId: string,
+    payload: CharacterUpdate,
+  ): Promise<Character> {
+    return this.json<Character>(`/characters/${characterId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteCharacter(characterId: string): Promise<void> {
+    const response = await fetch(this.url(`/characters/${characterId}`), {
+      method: "DELETE",
+      headers: this.authHeaders(),
+    });
+    await ensureOk(response);
   }
 
   async saveMemory(characterId: string): Promise<void> {

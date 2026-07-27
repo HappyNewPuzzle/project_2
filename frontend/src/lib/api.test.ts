@@ -55,3 +55,59 @@ describe("ApiClient.listCharacters", () => {
     );
   });
 });
+
+describe("ApiClient character mutations", () => {
+  it("캐릭터 수정 payload를 PATCH JSON으로 보낸다", async () => {
+    const updatedCharacter = {
+      id: "character-1",
+      owner_id: "user-1",
+      name: "수정된 루나",
+      description: "",
+      personality: "",
+      speaking_style: "",
+      system_prompt: "",
+      created_at: "2026-07-27T00:00:00Z",
+      updated_at: "2026-07-27T01:00:00Z",
+    };
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(updatedCharacter), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ApiClient("http://localhost:8000", "token");
+
+    await expect(
+      client.updateCharacter("character-1", { name: "수정된 루나" }),
+    ).resolves.toEqual(updatedCharacter);
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(request.method).toBe("PATCH");
+    expect(request.body).toBe(JSON.stringify({ name: "수정된 루나" }));
+  });
+
+  it("409 JSON detail을 ApiError 메시지로 보존한다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            detail: "Character is used by an existing conversation.",
+          }),
+          {
+            status: 409,
+            statusText: "Conflict",
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      ),
+    );
+    const client = new ApiClient("http://localhost:8000", "token");
+
+    await expect(client.deleteCharacter("character-1")).rejects.toMatchObject({
+      status: 409,
+      message:
+        "409 Conflict: Character is used by an existing conversation.",
+    });
+  });
+});

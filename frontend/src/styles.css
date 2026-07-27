@@ -287,6 +287,61 @@ textarea {
   font-size: 11px;
 }
 
+.readonly-character {
+  display: grid;
+  gap: 10px;
+  color: #aeb9cf;
+}
+
+.readonly-character > p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.readonly-character dl {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 7px 10px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.readonly-character dt {
+  color: #77849e;
+  font-weight: 750;
+}
+
+.readonly-character dd {
+  margin: 0;
+  color: #c4cee1;
+}
+
+.readonly-notice {
+  border: 1px solid #34415d;
+  border-radius: 10px;
+  padding: 10px;
+  color: #91a4c8;
+  background: #151d2e;
+  font-size: 12px;
+}
+
+.prompt-input {
+  min-height: 110px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+}
+
+.delete-warning {
+  margin: 0;
+  border: 1px solid #713f4b;
+  border-radius: 10px;
+  padding: 10px;
+  color: #ffb4bd;
+  background: #301823;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .conversation-item {
   display: grid;
   gap: 4px;

@@ -33,6 +33,7 @@
 26. [24단계: 대화방 제목 자동 생성](step-24-conversation-titles.md)
 27. [25단계: React + TypeScript 프론트엔드 구조화](step-25-react-frontend.md)
 28. [26단계: 기존 캐릭터 목록 조회와 선택](step-26-character-selection.md)
+29. [27단계: 사용자 소유 캐릭터 수정과 삭제](step-27-character-management.md)
 
 각 문서를 읽은 뒤 문서에 링크된 실제 파일을 나란히 열어 보는 것을 권장합니다.
 라우터에서 시작해 서비스, repository, DB 모델 순으로 따라가면 요청 한 건의 흐름을

@@ -1,14 +1,16 @@
 import { useCallback, useMemo, useState } from "react";
 import { AuthPanel } from "./components/AuthPanel";
+import { CharacterEditor } from "./components/CharacterEditor";
 import { CharacterList } from "./components/CharacterList";
 import { CharacterPanel } from "./components/CharacterPanel";
 import { ChatPanel } from "./components/ChatPanel";
 import { ConversationList } from "./components/ConversationList";
 import { usePersistentState } from "./hooks/usePersistentState";
-import { ApiClient } from "./lib/api";
+import { ApiClient, ApiError } from "./lib/api";
 import type {
   Character,
   CharacterCreate,
+  CharacterUpdate,
   ChatMessageView,
   Conversation,
 } from "./types/api";
@@ -45,6 +47,10 @@ export default function App() {
   const api = useMemo(
     () => new ApiClient(apiBaseUrl, token),
     [apiBaseUrl, token],
+  );
+  const selectedCharacter = useMemo(
+    () => characters.find((character) => character.id === characterId),
+    [characterId, characters],
   );
 
   // 모든 버튼 작업의 로딩 상태와 오류 표시를 한 곳에서 처리합니다.
@@ -118,6 +124,43 @@ export default function App() {
     setConversationId("");
     setMessages([]);
     setStatus(`“${character.name}” 캐릭터를 선택했습니다.`);
+  }
+
+  async function updateCharacter(
+    targetCharacterId: string,
+    payload: CharacterUpdate,
+  ) {
+    await runAction(async () => {
+      const updated = await api.updateCharacter(targetCharacterId, payload);
+      setCharacters((current) =>
+        current.map((character) =>
+          character.id === updated.id ? updated : character,
+        ),
+      );
+      setStatus(`“${updated.name}” 캐릭터를 수정했습니다.`);
+    });
+  }
+
+  async function deleteCharacter(targetCharacterId: string) {
+    await runAction(async () => {
+      try {
+        await api.deleteCharacter(targetCharacterId);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 409) {
+          throw new Error(
+            "기존 대화에서 사용 중인 캐릭터는 삭제할 수 없습니다. 연결된 대화를 먼저 삭제하세요.",
+          );
+        }
+        throw error;
+      }
+      setCharacters((current) =>
+        current.filter((character) => character.id !== targetCharacterId),
+      );
+      setCharacterId("");
+      setConversationId("");
+      setMessages([]);
+      setStatus("캐릭터를 삭제했습니다.");
+    });
   }
 
   async function saveMemory() {
@@ -234,7 +277,7 @@ export default function App() {
     <main>
       <header className="hero">
         <div>
-          <p className="eyebrow">STEP 26 · CHARACTER CATALOG</p>
+          <p className="eyebrow">STEP 27 · CHARACTER MANAGEMENT</p>
           <h1>AI Character Chat</h1>
           <p>
             인증, 캐릭터, 대화 기록과 SSE 스트리밍을 컴포넌트로 분리한
@@ -268,6 +311,12 @@ export default function App() {
             disabled={busy || !token}
             onReload={() => runAction(loadCharacters)}
             onSelect={selectCharacter}
+          />
+          <CharacterEditor
+            character={selectedCharacter}
+            disabled={busy || !token}
+            onUpdate={updateCharacter}
+            onDelete={deleteCharacter}
           />
           <ConversationList
             conversations={conversations}

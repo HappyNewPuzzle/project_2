@@ -11,6 +11,15 @@ export interface CharacterCreate {
   speaking_style: string;
 }
 
+// PATCH API는 바꾸려는 필드만 보낼 수 있도록 모두 선택 사항입니다.
+export interface CharacterUpdate {
+  name?: string;
+  description?: string;
+  personality?: string;
+  speaking_style?: string;
+  system_prompt?: string;
+}
+
 // 캐릭터 생성·목록 API가 반환하는 전체 공개 필드입니다.
 export interface Character {
   id: string;
