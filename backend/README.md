@@ -415,6 +415,7 @@ python scripts/check_deploy_env.py --production
 28. 장기 기억 관리 UI: 작성, 범위 필터, 활성화와 삭제 (완료)
 29. 기억 의미 검색 UI: 자연어 검색, 유사도 표시와 재색인 (완료)
 30. 인증 세션 UX: 로그아웃, 만료 401 처리와 상태 초기화 (완료)
+31. 세션 갱신: HttpOnly refresh token 회전, 재사용 탐지, 자동 요청 재시도 (완료)
 
 ## 저장 동작
 
@@ -432,5 +433,5 @@ LLM 호출이 실패해도 사용자 메시지는 남습니다. 스트리밍 도
 
 - CI에서 `/health/ready` 통합 테스트 자동 검증
 - OpenTelemetry metrics와 tracing
-- HttpOnly refresh token rotation과 세션 폐기
+- Playwright 기반 실제 브라우저 인증·채팅 E2E 테스트
 - 프론트엔드 브라우저 E2E 테스트

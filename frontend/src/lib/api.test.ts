@@ -53,6 +53,7 @@ describe("ApiClient.listCharacters", () => {
     expect(new Headers(request.headers).get("Authorization")).toBe(
       "Bearer access-token",
     );
+    expect(request.credentials).toBe("include");
   });
 });
 
@@ -252,6 +253,60 @@ describe("ApiClient semantic memory operations", () => {
 });
 
 describe("ApiClient unauthorized session handling", () => {
+  it("401이면 refresh 후 새 access token으로 원 요청을 한 번 재시도한다", async () => {
+    const onUnauthorized = vi.fn();
+    const onTokenRefreshed = vi.fn();
+    const characters = [{ id: "character-1", name: "루나" }];
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ detail: "Expired access token." }), {
+          status: 401,
+          statusText: "Unauthorized",
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            access_token: "renewed-token",
+            token_type: "bearer",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(characters), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ApiClient(
+      "http://localhost:8000",
+      "expired-token",
+      onUnauthorized,
+      onTokenRefreshed,
+    );
+
+    await expect(client.listCharacters()).resolves.toEqual(characters);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      "http://localhost:8000/auth/refresh",
+    );
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: "POST",
+      credentials: "include",
+    });
+    const retriedRequest = fetchMock.mock.calls[2]?.[1] as RequestInit;
+    expect(new Headers(retriedRequest.headers).get("Authorization")).toBe(
+      "Bearer renewed-token",
+    );
+    expect(onTokenRefreshed).toHaveBeenCalledWith("renewed-token");
+    expect(onUnauthorized).not.toHaveBeenCalled();
+  });
+
   it("보호 API의 401은 callback을 호출하고 처리 표시를 남긴다", async () => {
     const onUnauthorized = vi.fn();
     vi.stubGlobal(
@@ -304,5 +359,35 @@ describe("ApiClient unauthorized session handling", () => {
       status: 401,
       sessionHandled: false,
     });
+  });
+
+  it("로그인과 로그아웃에도 HttpOnly 쿠키용 credentials 옵션을 사용한다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            access_token: "access-token",
+            token_type: "bearer",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ApiClient("http://localhost:8000", "");
+
+    await client.login("user@example.com", "password");
+    await client.logout();
+
+    expect(
+      (fetchMock.mock.calls[0]?.[1] as RequestInit).credentials,
+    ).toBe("include");
+    expect(
+      (fetchMock.mock.calls[1]?.[1] as RequestInit).credentials,
+    ).toBe("include");
   });
 });

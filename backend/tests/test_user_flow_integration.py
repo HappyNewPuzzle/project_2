@@ -12,12 +12,13 @@ from collections.abc import AsyncGenerator, Sequence
 import pytest
 from sqlalchemy import select
 
-from app.db.models import Message, MessageRole
+from app.core.security import hash_refresh_token
+from app.db.models import Message, MessageRole, RefreshSession
 from app.db.session import get_engine, get_session_factory
 from app.schemas.character import CharacterCreate
 from app.schemas.memory import MemoryCreate
 from app.schemas.user import UserCreate
-from app.services.auth_service import AuthService
+from app.services.auth_service import AuthService, RefreshTokenReuseError
 from app.services.character_service import CharacterService
 from app.services.chat_service import ChatService
 from app.services.llm_service import LLMMessage
@@ -81,11 +82,45 @@ async def _run_user_flow() -> None:
             )
             assert user.email == email
 
-            # 2) 같은 계정으로 로그인해 JWT 문자열이 발급되는지 확인한다.
-            token = await AuthService(session).login(email, password)
-            assert token
+            # 2) 같은 계정으로 로그인해 access/refresh token 쌍이 발급되는지 확인한다.
+            tokens = await AuthService(session).login(email, password)
+            assert tokens.access_token
+            assert tokens.refresh_token
 
-            # 3) 실제 CharacterService로 사용자 소유 캐릭터를 만든다.
+            # 3) refresh token을 회전하면 같은 family 안에 새 세션이 생긴다.
+            rotated_tokens = await AuthService(session).refresh(tokens.refresh_token)
+            assert rotated_tokens.access_token
+            assert rotated_tokens.refresh_token != tokens.refresh_token
+
+            refresh_rows = (
+                await session.scalars(
+                    select(RefreshSession).where(
+                        RefreshSession.user_id == user.id
+                    )
+                )
+            ).all()
+            assert len(refresh_rows) == 2
+            original_row = next(
+                row
+                for row in refresh_rows
+                if row.token_hash == hash_refresh_token(tokens.refresh_token)
+            )
+            rotated_row = next(
+                row
+                for row in refresh_rows
+                if row.token_hash
+                == hash_refresh_token(rotated_tokens.refresh_token)
+            )
+            assert original_row.revoked_at is not None
+            assert rotated_row.revoked_at is None
+
+            # 4) 이미 쓴 token을 재사용하면 탈취로 보고 family 전체가 폐기된다.
+            with pytest.raises(RefreshTokenReuseError):
+                await AuthService(session).refresh(tokens.refresh_token)
+            await session.refresh(rotated_row)
+            assert rotated_row.revoked_at is not None
+
+            # 5) 실제 CharacterService로 사용자 소유 캐릭터를 만든다.
             character = await CharacterService(session, user_id=user.id).create(
                 CharacterCreate(
                     name="루나",
@@ -97,7 +132,7 @@ async def _run_user_flow() -> None:
             )
             assert character.owner_id == user.id
 
-            # 4) 실제 MemoryService로 캐릭터에 연결된 장기 기억을 저장한다.
+            # 6) 실제 MemoryService로 캐릭터에 연결된 장기 기억을 저장한다.
             memory = await MemoryService(session, user_id=user.id).create(
                 MemoryCreate(
                     content="사용자는 천문학을 좋아한다",
@@ -107,7 +142,7 @@ async def _run_user_flow() -> None:
             )
             assert memory.character_id == character.id
 
-            # 5) 실제 ChatService에 가짜 LLM을 주입해 저장과 문맥 조립을 검증한다.
+            # 7) 실제 ChatService에 가짜 LLM을 주입해 저장과 문맥 조립을 검증한다.
             llm = RecordingLLMProvider()
             chat = ChatService(
                 session,
@@ -122,20 +157,20 @@ async def _run_user_flow() -> None:
                 character_id=character.id,
             )
 
-            # 6) 응답에는 새 대화방 ID, 캐릭터 ID, 가짜 LLM 답변이 포함되어야 한다.
+            # 8) 응답에는 새 대화방 ID, 캐릭터 ID, 가짜 LLM 답변이 포함되어야 한다.
             assert result.character_id == character.id
             assert result.reply == "안녕하세요, 저는 루나예요."
 
-            # 7) 캐릭터 instructions가 LLM 호출 경계까지 전달되는지 확인한다.
+            # 9) 캐릭터 instructions가 LLM 호출 경계까지 전달되는지 확인한다.
             assert "You are roleplaying as 루나." in llm.instructions
             assert "달빛 도서관의 사서" in llm.instructions
 
-            # 8) 장기 기억이 최근 대화 앞의 user 문맥으로 들어갔는지 확인한다.
+            # 10) 장기 기억이 최근 대화 앞의 user 문맥으로 들어갔는지 확인한다.
             assert llm.messages[0].role == "user"
             assert "사용자는 천문학을 좋아한다" in llm.messages[0].content
             assert llm.messages[-1].content == "안녕! 나를 기억해줘."
 
-            # 9) DB에는 사용자 메시지와 assistant 메시지가 모두 저장되어야 한다.
+            # 11) DB에는 사용자 메시지와 assistant 메시지가 모두 저장되어야 한다.
             saved_messages = (
                 await session.scalars(
                     select(Message)

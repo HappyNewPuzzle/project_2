@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     )
     jwt_algorithm: Literal["HS256"] = "HS256"
     access_token_expire_minutes: int = Field(default=30, ge=1, le=10_080)
+    refresh_token_expire_days: int = Field(default=30, ge=1, le=365)
+    refresh_cookie_name: str = "character_chat_refresh"
+    refresh_cookie_secure: bool = False
+    refresh_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
 
     # 실행 디렉터리의 .env를 읽고, 아직 사용하지 않는 키는 무시한다.
     model_config = SettingsConfigDict(

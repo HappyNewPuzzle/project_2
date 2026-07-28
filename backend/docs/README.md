@@ -37,6 +37,7 @@
 30. [28단계: 장기 기억 관리 UI](step-28-memory-management.md)
 31. [29단계: 장기 기억 의미 검색과 재색인 UI](step-29-memory-semantic-search-ui.md)
 32. [30단계: 로그아웃과 401 인증 세션 UX](step-30-auth-session-ux.md)
+33. [31단계: HttpOnly refresh token 회전과 자동 세션 갱신](step-31-refresh-token-rotation.md)
 
 각 문서를 읽은 뒤 문서에 링크된 실제 파일을 나란히 열어 보는 것을 권장합니다.
 라우터에서 시작해 서비스, repository, DB 모델 순으로 따라가면 요청 한 건의 흐름을

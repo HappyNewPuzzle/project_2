@@ -49,6 +49,8 @@ export default function App() {
     token ? "저장된 로그인 토큰이 있습니다." : "먼저 회원가입 또는 로그인하세요.",
   );
   const [busy, setBusy] = useState(false);
+  // access token 자동 갱신에는 화면을 remount하지 않고, 사용자 전환 때만 증가시킵니다.
+  const [sessionGeneration, setSessionGeneration] = useState(0);
 
   // 인증이 바뀔 때 다른 사용자의 데이터가 화면에 남지 않도록 한 번에 비웁니다.
   const clearUserData = useCallback(() => {
@@ -64,6 +66,7 @@ export default function App() {
     (message: string) => {
       setToken("");
       clearUserData();
+      setSessionGeneration((current) => current + 1);
       setStatus(message);
     },
     [clearUserData, setToken],
@@ -73,6 +76,14 @@ export default function App() {
     clearSession("로그인 세션이 만료되었습니다. 다시 로그인하세요.");
   }, [clearSession]);
 
+  const handleTokenRefreshed = useCallback(
+    (accessToken: string) => {
+      setToken(accessToken);
+      setStatus("로그인 세션을 자동으로 갱신했습니다.");
+    },
+    [setToken],
+  );
+
   // URL이나 토큰이 바뀔 때만 API client를 다시 만듭니다.
   const api = useMemo(
     () =>
@@ -80,8 +91,9 @@ export default function App() {
         apiBaseUrl,
         token,
         token ? handleUnauthorized : undefined,
+        token ? handleTokenRefreshed : undefined,
       ),
-    [apiBaseUrl, handleUnauthorized, token],
+    [apiBaseUrl, handleTokenRefreshed, handleUnauthorized, token],
   );
   const selectedCharacter = useMemo(
     () => characters.find((character) => character.id === characterId),
@@ -135,9 +147,15 @@ export default function App() {
       // 다른 사용자로 로그인할 때 이전 사용자의 ID와 목록을 먼저 제거합니다.
       clearUserData();
       setToken(auth.access_token);
+      setSessionGeneration((current) => current + 1);
 
       // state 반영을 기다리지 않고 새 토큰을 가진 client로 초기 목록을 동시에 읽습니다.
-      const authenticatedApi = new ApiClient(apiBaseUrl, auth.access_token);
+      const authenticatedApi = new ApiClient(
+        apiBaseUrl,
+        auth.access_token,
+        handleUnauthorized,
+        handleTokenRefreshed,
+      );
       const [loadedCharacters, loadedConversations, loadedMemories] =
         await Promise.all([
           authenticatedApi.listCharacters(),
@@ -153,8 +171,17 @@ export default function App() {
     });
   }
 
-  function logout() {
-    clearSession("로그아웃했습니다.");
+  async function logout() {
+    setBusy(true);
+    try {
+      await api.logout();
+      clearSession("로그아웃했습니다.");
+    } catch {
+      // 네트워크 장애가 있어도 이 브라우저에 남은 access token과 화면 데이터는 제거합니다.
+      clearSession("서버 연결 없이 이 브라우저에서 로그아웃했습니다.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function createCharacter(payload: CharacterCreate) {
@@ -382,7 +409,7 @@ export default function App() {
     <main>
       <header className="hero">
         <div>
-          <p className="eyebrow">STEP 30 · AUTH SESSION UX</p>
+          <p className="eyebrow">STEP 31 · REFRESH TOKEN ROTATION</p>
           <h1>AI Character Chat</h1>
           <p>
             인증, 캐릭터, 대화 기록과 SSE 스트리밍을 컴포넌트로 분리한
@@ -395,8 +422,8 @@ export default function App() {
         </span>
       </header>
 
-      {/* token 변경 시 입력·검색 결과·채팅 draft까지 새 세션으로 remount합니다. */}
-      <div className="workspace" key={token || "anonymous"}>
+      {/* 사용자 로그인·로그아웃 때만 입력·검색 결과·채팅 draft를 새로 만듭니다. */}
+      <div className="workspace" key={sessionGeneration}>
         <aside>
           <AuthPanel
             apiBaseUrl={apiBaseUrl}

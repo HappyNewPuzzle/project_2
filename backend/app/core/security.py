@@ -1,5 +1,7 @@
 """비밀번호 해시와 JWT access token 생성·검증을 담당한다."""
 
+import hashlib
+import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -72,3 +74,15 @@ def decode_access_token(token: str) -> uuid.UUID:
         return uuid.UUID(subject)
     except (InvalidTokenError, ValueError, TypeError) as exc:
         raise InvalidAccessTokenError("Invalid access token") from exc
+
+
+def create_refresh_token() -> str:
+    """브라우저 cookie에만 저장할 추측 불가능한 opaque token을 만든다."""
+
+    return secrets.token_urlsafe(48)
+
+
+def hash_refresh_token(token: str) -> str:
+    """DB 유출 시 원문 token이 바로 사용되지 않도록 SHA-256 digest만 저장한다."""
+
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

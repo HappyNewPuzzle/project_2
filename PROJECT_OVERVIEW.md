@@ -14,6 +14,7 @@
 - FastAPI 기반 백엔드
 - 회원가입 / 로그인
 - JWT 인증
+- HttpOnly refresh token 회전과 자동 세션 갱신
 - AI 캐릭터 생성과 관리
 - 캐릭터별 프롬프트
 - 사용자별 대화 저장
@@ -28,7 +29,7 @@
 
 ## 현재 구현 상태
 
-현재는 30단계까지 구현되어 있습니다.
+현재는 31단계까지 구현되어 있습니다.
 
 ```text
 1단계  최소 채팅 API
@@ -61,6 +62,7 @@
 28단계 장기 기억 작성·범위·중요도·활성 상태·삭제 UI
 29단계 자연어 기억 의미 검색·유사도 결과·재색인 UI
 30단계 로그아웃·보호 API 401 감지·사용자 상태 초기화
+31단계 HttpOnly refresh token 회전·재사용 탐지·자동 세션 갱신
 ```
 
 ## 전체 폴더 구조
@@ -155,6 +157,8 @@ Router
 ```text
 POST /auth/register
 POST /auth/login
+POST /auth/refresh
+POST /auth/logout
 GET  /auth/me
 ```
 
@@ -162,6 +166,9 @@ GET  /auth/me
 
 - Argon2 기반 비밀번호 해시
 - JWT access token 발급
+- HttpOnly 쿠키 기반 opaque refresh token
+- DB token hash 저장, 1회성 rotation과 family 재사용 탐지
+- access token 만료 시 프론트 자동 갱신과 원 요청 1회 재시도
 - Bearer token 인증
 - 사용자별 데이터 격리
 
@@ -327,6 +334,7 @@ conversations
 messages
 memories
 memory_embeddings
+refresh_sessions
 ```
 
 관계:
@@ -335,6 +343,7 @@ memory_embeddings
 User 1 ─── N Character
 User 1 ─── N Conversation
 User 1 ─── N Memory
+User 1 ─── N RefreshSession
 
 Character 1 ─── N Conversation
 Character 1 ─── N Memory
@@ -492,13 +501,13 @@ python scripts/check_deploy_env.py --allow-missing-openai --allow-dev-secret
 
 아직 구현되지 않았거나 후속 개선이 필요한 부분입니다.
 
-- 운영용 토큰 저장·갱신과 상세 오류 UX
+- 활성 기기별 refresh session 조회·개별 폐기 UI
 - 캐릭터 이미지 / 프로필 기능
 - 중복 memory 제거
 - 자동 memory 저장 전 사용자 승인 UI
 - Redis 장애 시 fallback 정책
 - 관리자 기능
-- refresh token
+- cross-site 배포를 위한 CSRF 방어와 cookie 정책 강화
 - 이메일 인증
 - 실제 클라우드 배포 workflow
 - OpenTelemetry metrics / tracing
@@ -518,7 +527,8 @@ python scripts/check_deploy_env.py --allow-missing-openai --allow-dev-secret
 28단계: 장기 기억 목록·작성·활성화·삭제 UI (완료)
 29단계: 장기 기억 의미 검색·재색인 UI (완료)
 30단계: 로그아웃·토큰 만료·401 인증 상태 초기화 (완료)
-31단계: HttpOnly refresh token rotation과 자동 세션 갱신
+31단계: HttpOnly refresh token rotation과 자동 세션 갱신 (완료)
+32단계: Playwright 기반 브라우저 E2E 테스트
 ```
 
 현재 상태는 “학습용 예제”를 넘어, 실제 서비스로 확장 가능한 백엔드 골격과 React UI,

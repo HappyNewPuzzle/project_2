@@ -61,10 +61,13 @@ async function ensureOk(response: Response): Promise<Response> {
 
 // Base URL과 access token을 묶어 화면 컴포넌트에서 fetch 세부사항을 숨깁니다.
 export class ApiClient {
+  private refreshPromise: Promise<string | null> | null = null;
+
   constructor(
     private readonly baseUrl: string,
-    private readonly token: string,
+    private token: string,
     private readonly onUnauthorized?: () => void,
+    private readonly onTokenRefreshed?: (accessToken: string) => void,
   ) {}
 
   private url(path: string): string {
@@ -101,16 +104,66 @@ export class ApiClient {
     }
   }
 
+  // 동시에 여러 API가 401이어도 refresh 요청은 하나만 실행해 token 회전 충돌을 막습니다.
+  private async renewAccessToken(): Promise<string | null> {
+    if (!this.refreshPromise) {
+      this.refreshPromise = fetch(this.url("/auth/refresh"), {
+        method: "POST",
+        credentials: "include",
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            return null;
+          }
+          const auth = (await response.json()) as AuthToken;
+          this.token = auth.access_token;
+          this.onTokenRefreshed?.(auth.access_token);
+          return auth.access_token;
+        })
+        .catch(() => null)
+        .finally(() => {
+          this.refreshPromise = null;
+        });
+    }
+    return this.refreshPromise;
+  }
+
+  // 쿠키 전송, 401 갱신, 원 요청 1회 재시도를 모든 보호 API에 동일하게 적용합니다.
+  private async request(
+    path: string,
+    init: RequestInit = {},
+    allowRefresh = true,
+    notifyUnauthorized = true,
+  ): Promise<Response> {
+    const send = () =>
+      fetch(this.url(path), {
+        ...init,
+        credentials: "include",
+        headers: this.authHeaders(init.headers),
+      });
+
+    let response = await send();
+    if (response.status === 401 && this.token && allowRefresh) {
+      const renewedToken = await this.renewAccessToken();
+      if (renewedToken) {
+        response = await send();
+      }
+    }
+    return this.checked(response, notifyUnauthorized);
+  }
+
   private async json<T>(
     path: string,
     init: RequestInit = {},
+    allowRefresh = true,
     notifyUnauthorized = true,
   ): Promise<T> {
-    const response = await fetch(this.url(path), {
-      ...init,
-      headers: this.authHeaders(init.headers),
-    });
-    await this.checked(response, notifyUnauthorized);
+    const response = await this.request(
+      path,
+      init,
+      allowRefresh,
+      notifyUnauthorized,
+    );
     return (await response.json()) as T;
   }
 
@@ -122,6 +175,7 @@ export class ApiClient {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       },
+      false,
       false,
     );
   }
@@ -135,6 +189,17 @@ export class ApiClient {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: form,
       },
+      false,
+      false,
+    );
+  }
+
+  async logout(): Promise<void> {
+    // logout은 access token이 없어도 HttpOnly 쿠키만으로 서버 session을 폐기할 수 있습니다.
+    await this.request(
+      "/auth/logout",
+      { method: "POST" },
+      false,
       false,
     );
   }
@@ -164,11 +229,9 @@ export class ApiClient {
   }
 
   async deleteCharacter(characterId: string): Promise<void> {
-    const response = await fetch(this.url(`/characters/${characterId}`), {
+    await this.request(`/characters/${characterId}`, {
       method: "DELETE",
-      headers: this.authHeaders(),
     });
-    await this.checked(response);
   }
 
   async createMemory(payload: MemoryCreate): Promise<Memory> {
@@ -195,11 +258,9 @@ export class ApiClient {
   }
 
   async deleteMemory(memoryId: string): Promise<void> {
-    const response = await fetch(this.url(`/memories/${memoryId}`), {
+    await this.request(`/memories/${memoryId}`, {
       method: "DELETE",
-      headers: this.authHeaders(),
     });
-    await this.checked(response);
   }
 
   async searchMemories(
@@ -237,26 +298,20 @@ export class ApiClient {
   }
 
   async deleteConversation(conversationId: string): Promise<void> {
-    const response = await fetch(
-      this.url(`/conversations/${conversationId}`),
-      {
-        method: "DELETE",
-        headers: this.authHeaders(),
-      },
-    );
-    await this.checked(response);
+    await this.request(`/conversations/${conversationId}`, {
+      method: "DELETE",
+    });
   }
 
   async streamChat(
     payload: ChatRequest,
     onEvent: (event: SseEvent) => void | Promise<void>,
   ): Promise<void> {
-    const response = await fetch(this.url("/chat/stream"), {
+    const response = await this.request("/chat/stream", {
       method: "POST",
-      headers: this.authHeaders({ "Content-Type": "application/json" }),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    await this.checked(response);
     if (!response.body) {
       throw new ApiError(502, "Streaming response body is missing.");
     }

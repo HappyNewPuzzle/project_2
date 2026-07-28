@@ -3,7 +3,7 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.dependencies import (
@@ -11,16 +11,54 @@ from app.api.dependencies import (
     AuthServiceDependency,
     CurrentUserDependency,
 )
+from app.core.config import get_settings
 from app.schemas.user import TokenResponse, UserCreate, UserResponse
 from app.services.auth_service import (
     AuthPersistenceError,
     InactiveUserError,
     InvalidCredentialsError,
+    InvalidRefreshTokenError,
+    RefreshTokenReuseError,
     UserAlreadyExistsError,
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
+settings = get_settings()
+
+
+def set_refresh_cookie(response: Response, refresh_token: str) -> None:
+    """JavaScript가 읽지 못하는 쿠키에 refresh token을 저장한다."""
+
+    response.set_cookie(
+        key=settings.refresh_cookie_name,
+        value=refresh_token,
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
+        httponly=True,
+        secure=settings.refresh_cookie_secure,
+        samesite=settings.refresh_cookie_samesite,
+        path="/auth",
+    )
+
+
+def clear_refresh_cookie(response: Response) -> None:
+    """발급 때와 같은 경로 속성으로 브라우저의 refresh 쿠키를 삭제한다."""
+
+    response.delete_cookie(
+        key=settings.refresh_cookie_name,
+        path="/auth",
+        secure=settings.refresh_cookie_secure,
+        httponly=True,
+        samesite=settings.refresh_cookie_samesite,
+    )
+
+
+def refresh_cookie_delete_header() -> str:
+    """HTTPException 응답에도 쿠키 삭제 header를 전달할 수 있게 만든다."""
+
+    response = Response()
+    clear_refresh_cookie(response)
+    return response.headers["set-cookie"]
 
 
 @router.post(
@@ -54,13 +92,14 @@ async def register(
 @router.post("/login", response_model=TokenResponse)
 async def login(
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
+    response: Response,
     service: AuthServiceDependency,
     _rate_limit: AuthRateLimitDependency,
 ) -> TokenResponse:
     """OAuth2 password form의 username 필드를 이메일로 사용해 JWT를 발급한다."""
 
     try:
-        token = await service.login(form.username, form.password)
+        tokens = await service.login(form.username, form.password)
     except (InvalidCredentialsError, InactiveUserError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -73,7 +112,68 @@ async def login(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service is unavailable.",
         ) from exc
-    return TokenResponse(access_token=token)
+    set_refresh_cookie(response, tokens.refresh_token)
+    return TokenResponse(access_token=tokens.access_token)
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_access_token(
+    request: Request,
+    response: Response,
+    service: AuthServiceDependency,
+    _rate_limit: AuthRateLimitDependency,
+) -> TokenResponse:
+    """HttpOnly 쿠키를 회전하고 새로운 짧은 수명의 access token을 반환한다."""
+
+    refresh_token = request.cookies.get(settings.refresh_cookie_name)
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token is missing.",
+        )
+    try:
+        tokens = await service.refresh(refresh_token)
+    except (
+        InactiveUserError,
+        InvalidRefreshTokenError,
+        RefreshTokenReuseError,
+    ) as exc:
+        clear_refresh_cookie(response)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh session is invalid.",
+            headers={"Set-Cookie": refresh_cookie_delete_header()},
+        ) from exc
+    except AuthPersistenceError as exc:
+        logger.exception("Refresh token rotation failed")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service is unavailable.",
+        ) from exc
+
+    set_refresh_cookie(response, tokens.refresh_token)
+    return TokenResponse(access_token=tokens.access_token)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(
+    request: Request,
+    response: Response,
+    service: AuthServiceDependency,
+) -> None:
+    """서버 세션 family를 폐기하고 브라우저 refresh 쿠키도 제거한다."""
+
+    refresh_token = request.cookies.get(settings.refresh_cookie_name)
+    try:
+        if refresh_token:
+            await service.logout(refresh_token)
+    except AuthPersistenceError as exc:
+        logger.exception("Logout session revocation failed")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service is unavailable.",
+        ) from exc
+    clear_refresh_cookie(response)
 
 
 @router.get("/me", response_model=UserResponse)

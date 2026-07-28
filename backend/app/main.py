@@ -47,7 +47,7 @@ def create_app() -> FastAPI:
     # lifespan을 넘기면 FastAPI가 서버 종료 시 DB 엔진 정리를 호출한다.
     app = FastAPI(
         title=settings.app_name,
-        version="0.6.0",
+        version="0.7.0",
         lifespan=lifespan,
     )
 
@@ -55,7 +55,8 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
-        allow_credentials=False,
+        # 다른 포트의 프론트엔드도 HttpOnly refresh 쿠키를 보낼 수 있어야 한다.
+        allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )

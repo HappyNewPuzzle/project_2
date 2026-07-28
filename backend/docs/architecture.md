@@ -60,6 +60,7 @@ SQLAlchemyError → PersistenceError → HTTP 503 또는 SSE error
 User 1 ─── N Character
 User 1 ─── N Conversation 1 ─── N Message
 User 1 ─── N Memory
+User 1 ─── N RefreshSession
 Character 1 ─── N Conversation
 Character 1 ─── N Memory (선택 관계)
 ```
@@ -75,12 +76,16 @@ Character 1 ─── N Memory (선택 관계)
 
 ```text
 회원가입 → Argon2 hash만 저장
-로그인 → 비밀번호 verify → sub=user UUID인 JWT 발급
+로그인 → 비밀번호 verify → access JWT + HttpOnly refresh token 발급
 보호 API → Bearer JWT 서명/만료 검증 → 현재 활성 사용자 조회
+access 만료 → refresh token 회전 → 새 access JWT → 원 요청 1회 재시도
+로그아웃 → refresh session family 폐기 + 쿠키 만료
 ```
 
 JWT payload는 암호화되지 않으므로 비밀번호나 민감 정보를 넣지 않습니다. 서버는
 `sub`의 UUID로 DB 사용자를 다시 조회해 비활성화와 삭제 상태까지 확인합니다.
+refresh token은 opaque 난수이며 DB에는 SHA-256 hash만 저장합니다. 이미 회전된 token이
+재사용되면 같은 로그인 family를 모두 폐기해 탈취된 장기 세션의 연속 사용을 막습니다.
 
 ## 장기 기억과 최근 대화
 
@@ -156,8 +161,10 @@ pgvector가 반환한 cosine similarity 순위를 표시합니다. 캐릭터 범
 provider vector가 없는 항목만 제한적으로 처리하고 화면에서 두 번 확인합니다.
 
 프론트 API client는 보호 API의 `401 Unauthorized`를 공통 경계에서 감지합니다.
-만료 세션은 token과 사용자별 App 상태를 비우고 React workspace를 remount해 입력
-draft와 검색 결과도 제거합니다. 로그인 endpoint 자체의 401은 잘못된 자격 증명이므로
+먼저 HttpOnly 쿠키로 refresh를 한 번 시도하고 성공하면 새 access token으로 원 요청을
+재시도합니다. 갱신도 실패한 세션은 token과 사용자별 App 상태를 비우고 React
+workspace를 remount해 입력 draft와 검색 결과도 제거합니다. 로그인 endpoint 자체의
+401은 잘못된 자격 증명이므로
 기존 세션 만료 callback에서 제외합니다.
 
 ## 운영 요청 경계
