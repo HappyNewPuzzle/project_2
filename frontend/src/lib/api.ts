@@ -8,6 +8,8 @@ import type {
   Conversation,
   Memory,
   MemoryCreate,
+  MemoryReindexResponse,
+  MemorySearchResult,
   MemoryUpdate,
   SavedMessage,
   SseEvent,
@@ -161,6 +163,30 @@ export class ApiClient {
       headers: this.authHeaders(),
     });
     await ensureOk(response);
+  }
+
+  async searchMemories(
+    query: string,
+    characterId: string | null,
+  ): Promise<MemorySearchResult[]> {
+    const params = new URLSearchParams({
+      query,
+      limit: "10",
+    });
+    if (characterId) {
+      params.set("character_id", characterId);
+    }
+    return this.json<MemorySearchResult[]>(
+      `/memories/search?${params.toString()}`,
+    );
+  }
+
+  async reindexMemories(): Promise<number> {
+    const response = await this.json<MemoryReindexResponse>(
+      "/memories/reindex?limit=100",
+      { method: "POST" },
+    );
+    return response.indexed_count;
   }
 
   async listConversations(): Promise<Conversation[]> {

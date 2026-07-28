@@ -207,3 +207,46 @@ describe("ApiClient memory management", () => {
     );
   });
 });
+
+describe("ApiClient semantic memory operations", () => {
+  it("검색어와 캐릭터 범위를 URL query로 안전하게 인코딩한다", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("[]", {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ApiClient("http://localhost:8000", "search-token");
+
+    await expect(
+      client.searchMemories("별과 우주 이야기", "character-1"),
+    ).resolves.toEqual([]);
+    const requestedUrl = new URL(fetchMock.mock.calls[0]?.[0] as string);
+    expect(requestedUrl.pathname).toBe("/memories/search");
+    expect(requestedUrl.searchParams.get("query")).toBe("별과 우주 이야기");
+    expect(requestedUrl.searchParams.get("character_id")).toBe("character-1");
+    expect(requestedUrl.searchParams.get("limit")).toBe("10");
+  });
+
+  it("재색인 결과의 처리 개수를 반환한다", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ indexed_count: 3 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new ApiClient("http://localhost:8000", "reindex-token");
+
+    await expect(client.reindexMemories()).resolves.toBe(3);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:8000/memories/reindex?limit=100",
+    );
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(request.method).toBe("POST");
+    expect(new Headers(request.headers).get("Authorization")).toBe(
+      "Bearer reindex-token",
+    );
+  });
+});

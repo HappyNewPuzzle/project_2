@@ -58,6 +58,16 @@ export interface Memory {
   updated_at: string;
 }
 
+// 의미 검색 응답은 기억 데이터에 cosine similarity 점수를 추가합니다.
+export interface MemorySearchResult extends Memory {
+  score: number;
+}
+
+// 재색인 응답은 이번 요청에서 새 vector를 만든 기억 개수를 반환합니다.
+export interface MemoryReindexResponse {
+  indexed_count: number;
+}
+
 // 대화 목록 API 한 건의 응답 형식입니다.
 export interface Conversation {
   id: string;

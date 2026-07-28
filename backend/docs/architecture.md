@@ -150,6 +150,11 @@ React의 기본 문자열 escape를 사용하며 `dangerouslySetInnerHTML`은 �
 기억 생성 또는 내용 수정은 embedding 저장까지 하나의 백엔드 transaction이므로,
 실패하면 프론트 입력을 보존하고 불완전한 기억은 DB에 남지 않습니다.
 
+의미 검색 UI는 일반 기억 목록과 결과 상태를 분리하고, 검색어를 embedding한 뒤
+pgvector가 반환한 cosine similarity 순위를 표시합니다. 캐릭터 범위 검색은 전역
+기억과 해당 캐릭터 기억만 포함하며 활성 기억만 후보가 됩니다. 재색인은 현재
+provider vector가 없는 항목만 제한적으로 처리하고 화면에서 두 번 확인합니다.
+
 ## 운영 요청 경계
 
 ```text

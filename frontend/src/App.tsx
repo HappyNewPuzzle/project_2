@@ -6,6 +6,7 @@ import { CharacterPanel } from "./components/CharacterPanel";
 import { ChatPanel } from "./components/ChatPanel";
 import { ConversationList } from "./components/ConversationList";
 import { MemoryPanel } from "./components/MemoryPanel";
+import { MemorySearchPanel } from "./components/MemorySearchPanel";
 import { usePersistentState } from "./hooks/usePersistentState";
 import { ApiClient, ApiError } from "./lib/api";
 import type {
@@ -16,6 +17,7 @@ import type {
   Conversation,
   Memory,
   MemoryCreate,
+  MemorySearchResult,
   MemoryUpdate,
 } from "./types/api";
 
@@ -214,6 +216,27 @@ export default function App() {
     return deletedSuccessfully;
   }
 
+  async function searchMemories(
+    query: string,
+    searchCharacterId: string | null,
+  ): Promise<MemorySearchResult[] | null> {
+    let found: MemorySearchResult[] | null = null;
+    await runAction(async () => {
+      found = await api.searchMemories(query, searchCharacterId);
+      setStatus(`의미가 가까운 활성 기억 ${found.length}개를 찾았습니다.`);
+    });
+    return found;
+  }
+
+  async function reindexMemories(): Promise<number | null> {
+    let indexedCount: number | null = null;
+    await runAction(async () => {
+      indexedCount = await api.reindexMemories();
+      setStatus(`장기 기억 ${indexedCount}개를 재색인했습니다.`);
+    });
+    return indexedCount;
+  }
+
   async function openConversation(conversation: Conversation) {
     await runAction(async () => {
       const savedMessages = await api.listMessages(conversation.id);
@@ -321,7 +344,7 @@ export default function App() {
     <main>
       <header className="hero">
         <div>
-          <p className="eyebrow">STEP 28 · LONG-TERM MEMORY</p>
+          <p className="eyebrow">STEP 29 · SEMANTIC MEMORY SEARCH</p>
           <h1>AI Character Chat</h1>
           <p>
             인증, 캐릭터, 대화 기록과 SSE 스트리밍을 컴포넌트로 분리한
@@ -370,6 +393,13 @@ export default function App() {
             onCreate={createMemory}
             onUpdate={updateMemory}
             onDelete={deleteMemory}
+          />
+          <MemorySearchPanel
+            characters={characters}
+            selectedCharacterId={characterId}
+            disabled={busy || !token}
+            onSearch={searchMemories}
+            onReindex={reindexMemories}
           />
           <ConversationList
             conversations={conversations}

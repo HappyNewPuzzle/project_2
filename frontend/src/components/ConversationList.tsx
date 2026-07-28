@@ -21,7 +21,7 @@ export function ConversationList({
   return (
     <section className="panel">
       <div className="section-heading">
-        <span className="step-number">6</span>
+        <span className="step-number">7</span>
         <div>
           <h2>대화 목록</h2>
           <p>저장된 대화를 다시 열거나 현재 대화를 삭제합니다.</p>

@@ -35,6 +35,7 @@
 28. [26단계: 기존 캐릭터 목록 조회와 선택](step-26-character-selection.md)
 29. [27단계: 사용자 소유 캐릭터 수정과 삭제](step-27-character-management.md)
 30. [28단계: 장기 기억 관리 UI](step-28-memory-management.md)
+31. [29단계: 장기 기억 의미 검색과 재색인 UI](step-29-memory-semantic-search-ui.md)
 
 각 문서를 읽은 뒤 문서에 링크된 실제 파일을 나란히 열어 보는 것을 권장합니다.
 라우터에서 시작해 서비스, repository, DB 모델 순으로 따라가면 요청 한 건의 흐름을
