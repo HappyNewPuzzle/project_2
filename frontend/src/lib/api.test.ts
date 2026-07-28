@@ -250,3 +250,59 @@ describe("ApiClient semantic memory operations", () => {
     );
   });
 });
+
+describe("ApiClient unauthorized session handling", () => {
+  it("보호 API의 401은 callback을 호출하고 처리 표시를 남긴다", async () => {
+    const onUnauthorized = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ detail: "Invalid access token." }), {
+          status: 401,
+          statusText: "Unauthorized",
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+    const client = new ApiClient(
+      "http://localhost:8000",
+      "expired-token",
+      onUnauthorized,
+    );
+
+    const error = await client.listCharacters().catch((caught: unknown) => caught);
+    expect(onUnauthorized).toHaveBeenCalledOnce();
+    expect(error).toMatchObject({
+      status: 401,
+      sessionHandled: true,
+    });
+  });
+
+  it("로그인 실패 401은 기존 세션 callback을 호출하지 않는다", async () => {
+    const onUnauthorized = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ detail: "Invalid credentials." }), {
+          status: 401,
+          statusText: "Unauthorized",
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+    const client = new ApiClient(
+      "http://localhost:8000",
+      "existing-token",
+      onUnauthorized,
+    );
+
+    const error = await client
+      .login("user@example.com", "wrong-password")
+      .catch((caught: unknown) => caught);
+    expect(onUnauthorized).not.toHaveBeenCalled();
+    expect(error).toMatchObject({
+      status: 401,
+      sessionHandled: false,
+    });
+  });
+});

@@ -36,6 +36,7 @@
 29. [27단계: 사용자 소유 캐릭터 수정과 삭제](step-27-character-management.md)
 30. [28단계: 장기 기억 관리 UI](step-28-memory-management.md)
 31. [29단계: 장기 기억 의미 검색과 재색인 UI](step-29-memory-semantic-search-ui.md)
+32. [30단계: 로그아웃과 401 인증 세션 UX](step-30-auth-session-ux.md)
 
 각 문서를 읽은 뒤 문서에 링크된 실제 파일을 나란히 열어 보는 것을 권장합니다.
 라우터에서 시작해 서비스, repository, DB 모델 순으로 따라가면 요청 한 건의 흐름을

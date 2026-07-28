@@ -155,6 +155,11 @@ pgvector가 반환한 cosine similarity 순위를 표시합니다. 캐릭터 범
 기억과 해당 캐릭터 기억만 포함하며 활성 기억만 후보가 됩니다. 재색인은 현재
 provider vector가 없는 항목만 제한적으로 처리하고 화면에서 두 번 확인합니다.
 
+프론트 API client는 보호 API의 `401 Unauthorized`를 공통 경계에서 감지합니다.
+만료 세션은 token과 사용자별 App 상태를 비우고 React workspace를 remount해 입력
+draft와 검색 결과도 제거합니다. 로그인 endpoint 자체의 401은 잘못된 자격 증명이므로
+기존 세션 만료 callback에서 제외합니다.
+
 ## 운영 요청 경계
 
 ```text

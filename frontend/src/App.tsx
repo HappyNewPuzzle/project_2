@@ -50,10 +50,38 @@ export default function App() {
   );
   const [busy, setBusy] = useState(false);
 
+  // 인증이 바뀔 때 다른 사용자의 데이터가 화면에 남지 않도록 한 번에 비웁니다.
+  const clearUserData = useCallback(() => {
+    setCharacterId("");
+    setConversationId("");
+    setCharacters([]);
+    setMemories([]);
+    setConversations([]);
+    setMessages([]);
+  }, [setCharacterId, setConversationId]);
+
+  const clearSession = useCallback(
+    (message: string) => {
+      setToken("");
+      clearUserData();
+      setStatus(message);
+    },
+    [clearUserData, setToken],
+  );
+
+  const handleUnauthorized = useCallback(() => {
+    clearSession("로그인 세션이 만료되었습니다. 다시 로그인하세요.");
+  }, [clearSession]);
+
   // URL이나 토큰이 바뀔 때만 API client를 다시 만듭니다.
   const api = useMemo(
-    () => new ApiClient(apiBaseUrl, token),
-    [apiBaseUrl, token],
+    () =>
+      new ApiClient(
+        apiBaseUrl,
+        token,
+        token ? handleUnauthorized : undefined,
+      ),
+    [apiBaseUrl, handleUnauthorized, token],
   );
   const selectedCharacter = useMemo(
     () => characters.find((character) => character.id === characterId),
@@ -66,6 +94,10 @@ export default function App() {
     try {
       await action();
     } catch (error) {
+      // 보호 API 401은 ApiClient callback이 이미 세션과 안내를 초기화했습니다.
+      if (error instanceof ApiError && error.sessionHandled) {
+        return;
+      }
       setStatus(`오류: ${errorMessage(error)}`);
     } finally {
       setBusy(false);
@@ -100,6 +132,8 @@ export default function App() {
   async function login(email: string, password: string) {
     await runAction(async () => {
       const auth = await api.login(email, password);
+      // 다른 사용자로 로그인할 때 이전 사용자의 ID와 목록을 먼저 제거합니다.
+      clearUserData();
       setToken(auth.access_token);
 
       // state 반영을 기다리지 않고 새 토큰을 가진 client로 초기 목록을 동시에 읽습니다.
@@ -117,6 +151,10 @@ export default function App() {
         `로그인했습니다. 캐릭터 ${loadedCharacters.length}개, 대화 ${loadedConversations.length}개, 기억 ${loadedMemories.length}개를 불러왔습니다.`,
       );
     });
+  }
+
+  function logout() {
+    clearSession("로그아웃했습니다.");
   }
 
   async function createCharacter(payload: CharacterCreate) {
@@ -344,7 +382,7 @@ export default function App() {
     <main>
       <header className="hero">
         <div>
-          <p className="eyebrow">STEP 29 · SEMANTIC MEMORY SEARCH</p>
+          <p className="eyebrow">STEP 30 · AUTH SESSION UX</p>
           <h1>AI Character Chat</h1>
           <p>
             인증, 캐릭터, 대화 기록과 SSE 스트리밍을 컴포넌트로 분리한
@@ -357,14 +395,17 @@ export default function App() {
         </span>
       </header>
 
-      <div className="workspace">
+      {/* token 변경 시 입력·검색 결과·채팅 draft까지 새 세션으로 remount합니다. */}
+      <div className="workspace" key={token || "anonymous"}>
         <aside>
           <AuthPanel
             apiBaseUrl={apiBaseUrl}
+            authenticated={Boolean(token)}
             disabled={busy}
             onApiBaseUrlChange={setApiBaseUrl}
             onRegister={register}
             onLogin={login}
+            onLogout={logout}
           />
           <CharacterPanel
             selectedCharacterId={characterId}

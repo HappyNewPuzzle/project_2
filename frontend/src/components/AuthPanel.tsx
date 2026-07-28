@@ -2,19 +2,23 @@ import { FormEvent, useState } from "react";
 
 interface AuthPanelProps {
   apiBaseUrl: string;
+  authenticated: boolean;
   disabled: boolean;
   onApiBaseUrlChange: (value: string) => void;
   onRegister: (email: string, password: string) => Promise<void>;
   onLogin: (email: string, password: string) => Promise<void>;
+  onLogout: () => void;
 }
 
 // 인증에 필요한 입력만 관리하고, 실제 API 호출은 상위 App에 맡깁니다.
 export function AuthPanel({
   apiBaseUrl,
+  authenticated,
   disabled,
   onApiBaseUrlChange,
   onRegister,
   onLogin,
+  onLogout,
 }: AuthPanelProps) {
   const [email, setEmail] = useState("user@example.com");
   const [password, setPassword] = useState("password123");
@@ -33,7 +37,11 @@ export function AuthPanel({
         <span className="step-number">1</span>
         <div>
           <h2>서버 연결과 인증</h2>
-          <p>테스트 계정을 만들거나 기존 계정으로 로그인합니다.</p>
+          <p>
+            {authenticated
+              ? "현재 세션을 종료하거나 다른 계정으로 로그인할 수 있습니다."
+              : "테스트 계정을 만들거나 기존 계정으로 로그인합니다."}
+          </p>
         </div>
       </div>
 
@@ -82,6 +90,16 @@ export function AuthPanel({
           <button type="submit" disabled={disabled}>
             로그인
           </button>
+          {authenticated && (
+            <button
+              type="button"
+              className="danger"
+              disabled={disabled}
+              onClick={onLogout}
+            >
+              로그아웃
+            </button>
+          )}
         </div>
       </form>
     </section>

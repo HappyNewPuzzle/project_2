@@ -17,6 +17,8 @@ import type {
 
 // HTTP 상태와 백엔드 응답 본문을 함께 보존하는 프론트엔드 공통 오류입니다.
 export class ApiError extends Error {
+  public sessionHandled = false;
+
   constructor(
     public readonly status: number,
     message: string,
@@ -62,6 +64,7 @@ export class ApiClient {
   constructor(
     private readonly baseUrl: string,
     private readonly token: string,
+    private readonly onUnauthorized?: () => void,
   ) {}
 
   private url(path: string): string {
@@ -76,30 +79,64 @@ export class ApiClient {
     return headers;
   }
 
-  private async json<T>(path: string, init: RequestInit = {}): Promise<T> {
+  // 보호 API의 401만 App에 알리고 원래 ApiError도 호출자에게 전달합니다.
+  private async checked(
+    response: Response,
+    notifyUnauthorized = true,
+  ): Promise<Response> {
+    try {
+      return await ensureOk(response);
+    } catch (error) {
+      if (
+        notifyUnauthorized &&
+        this.token &&
+        error instanceof ApiError &&
+        error.status === 401
+      ) {
+        // App이 일반 오류 문구로 만료 안내를 덮어쓰지 않게 처리 여부를 남깁니다.
+        error.sessionHandled = true;
+        this.onUnauthorized?.();
+      }
+      throw error;
+    }
+  }
+
+  private async json<T>(
+    path: string,
+    init: RequestInit = {},
+    notifyUnauthorized = true,
+  ): Promise<T> {
     const response = await fetch(this.url(path), {
       ...init,
       headers: this.authHeaders(init.headers),
     });
-    await ensureOk(response);
+    await this.checked(response, notifyUnauthorized);
     return (await response.json()) as T;
   }
 
   async register(email: string, password: string): Promise<void> {
-    await this.json("/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    await this.json(
+      "/auth/register",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      },
+      false,
+    );
   }
 
   async login(email: string, password: string): Promise<AuthToken> {
     const form = new URLSearchParams({ username: email, password });
-    return this.json<AuthToken>("/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: form,
-    });
+    return this.json<AuthToken>(
+      "/auth/login",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: form,
+      },
+      false,
+    );
   }
 
   async createCharacter(payload: CharacterCreate): Promise<Character> {
@@ -131,7 +168,7 @@ export class ApiClient {
       method: "DELETE",
       headers: this.authHeaders(),
     });
-    await ensureOk(response);
+    await this.checked(response);
   }
 
   async createMemory(payload: MemoryCreate): Promise<Memory> {
@@ -162,7 +199,7 @@ export class ApiClient {
       method: "DELETE",
       headers: this.authHeaders(),
     });
-    await ensureOk(response);
+    await this.checked(response);
   }
 
   async searchMemories(
@@ -207,7 +244,7 @@ export class ApiClient {
         headers: this.authHeaders(),
       },
     );
-    await ensureOk(response);
+    await this.checked(response);
   }
 
   async streamChat(
@@ -219,7 +256,7 @@ export class ApiClient {
       headers: this.authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(payload),
     });
-    await ensureOk(response);
+    await this.checked(response);
     if (!response.body) {
       throw new ApiError(502, "Streaming response body is missing.");
     }
